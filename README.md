@@ -9,6 +9,7 @@ A calm, text-based RTL Hebrew journaling companion - PWA shell.
 - `manifest.json` - PWA manifest (installable, standalone, RTL, portrait)
 - `sw.js` - network-first service worker for offline support + auto-update
 - `icons/` - app icons (192, 512, apple-touch, favicon)
+- `worker/` - Cloudflare Worker that proxies chat requests to the Claude API
 
 ## Flows
 
@@ -18,13 +19,30 @@ and a quiet distress check-in - all defined in the `flows` object in
 
 ## Status
 
-This is the UI shell and onboarding flow only. The Claude API integration
-(sending `[FLOW: ...]`, streaming responses into the chat bubble, and
-persisting mood/journal entries) is not wired up yet.
+The UI shell, onboarding, and the conversational flows (יומן בוקר, סיכום יום,
+מצב רוח, יומן תודות, לחצן מצוקה) are wired up to Claude via the worker below.
+סיכום שבועי and ייצוא זכרונות still show static sample text - they need the
+Firestore aggregation step (pulling stored mood/journal entries) before they
+can call the model with real data.
 
-## Deploy
+## Set up the Claude API worker
+
+1. Install wrangler if needed: `npm install -g wrangler`
+2. `cd worker && wrangler login`
+3. Add your Anthropic API key as a secret:
+   `wrangler secret put ANTHROPIC_API_KEY`
+4. Deploy: `wrangler deploy`
+5. Copy the resulting `*.workers.dev` URL into `WORKER_URL` near the top of
+   the `<script>` in `index.html`, then commit and push.
+
+The worker only allows requests from `https://gefenrose.github.io` (see
+`ALLOWED_ORIGIN` in `worker/worker.js`) - update that if you deploy the app
+elsewhere.
+
+## Deploy the app
 
 Enable GitHub Pages for this repo (Settings -> Pages -> branch: main,
 folder: /). The app will be served at:
 
 https://gefenrose.github.io/serenity/
+
