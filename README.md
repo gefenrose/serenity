@@ -27,11 +27,11 @@ can call the model with real data.
 
 ## Set up the Claude API worker
 
-1. Install wrangler if needed: `npm install -g wrangler`
-2. `cd worker && wrangler login`
+1. `cd worker`
+2. Log in: `npx wrangler login`
 3. Add your Anthropic API key as a secret:
-   `wrangler secret put ANTHROPIC_API_KEY`
-4. Deploy: `wrangler deploy`
+   `npx wrangler secret put ANTHROPIC_API_KEY`
+4. Deploy: `npx wrangler deploy`
 5. Copy the resulting `*.workers.dev` URL into `WORKER_URL` near the top of
    the `<script>` in `index.html`, then commit and push.
 
