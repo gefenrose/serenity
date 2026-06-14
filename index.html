@@ -4,90 +4,725 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>יומן רגוע</title>
+<meta name="description" content="מקום שקט ליומן, בדיקת מצב רוח ושיחה עם עצמך">
+<meta name="theme-color" content="#5B9BD5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="יומן">
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  /* שילוב ה-CSS שהגדרנו */
-  :root { --paper: #FFFFFF; --ink: #2A3038; --muted: #9AA5B1; --line: #EDF1F5; --sage: #5B9BD5; --sage-tint: rgba(91,155,213,0.08); }
+  :root {
+    --paper: #FFFFFF;
+    --ink: #2A3038;
+    --muted: #9AA5B1;
+    --line: #EDF1F5;
+    --sage: #5B9BD5;
+    --sage-tint: rgba(91,155,213,0.08);
+  }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { height: 100vh; background: #F4F7FA; font-family: 'Rubik', sans-serif; color: var(--ink); display: flex; align-items: center; justify-content: center; padding: 24px; }
-  .app { width: 100%; max-width: 400px; height: 700px; background: var(--paper); border-radius: 20px; position: relative; overflow: hidden; box-shadow: 0 0 0 1px var(--line); display: flex; flex-direction: column; }
-  .screen { position: absolute; inset: 0; padding: 32px 26px; overflow-y: auto; }
-  .hidden { display: none; }
-  /* הוספת כפתורי גיבוי */
-  .backup-actions { margin-top: 20px; display: flex; gap: 10px; }
-  .flow-item { display: block; width: 100%; text-align: right; background: none; border: none; border-bottom: 1px solid var(--line); padding: 18px 6px; cursor: pointer; }
+  html, body {
+    height: 100%;
+    background: #F4F7FA;
+    font-family: 'Rubik', sans-serif;
+    color: var(--ink);
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .app {
+    width: 100%;
+    max-width: 400px;
+    height: 700px;
+    background: var(--paper);
+    border-radius: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px var(--line);
+  }
+  .screen {
+    position: absolute;
+    inset: 0;
+    padding: 32px 26px;
+    overflow-y: auto;
+  }
+  @media (max-width: 480px) {
+    body { padding: 0; background: var(--paper); }
+    .app {
+      width: 100vw;
+      height: 100dvh;
+      max-width: none;
+      border-radius: 0;
+      box-shadow: none;
+    }
+    .screen {
+      padding-top: calc(32px + env(safe-area-inset-top));
+      padding-bottom: calc(32px + env(safe-area-inset-bottom));
+      padding-left: calc(26px + env(safe-area-inset-left));
+      padding-right: calc(26px + env(safe-area-inset-right));
+    }
+  }
+
+  /* ---- home screen ---- */
+  .greeting {
+    font-weight: 500;
+    font-size: 26px;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  .date {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--sage);
+    margin: 28px auto;
+    animation: breathe 4s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.35; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.5); }
+  }
+  .flow-list { margin-top: 4px; }
+  .flow-item {
+    display: block;
+    width: 100%;
+    text-align: right;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    padding: 18px 6px;
+    font-family: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .flow-item:hover { background: var(--sage-tint); }
+  .flow-title {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 3px;
+  }
+  .flow-item.primary .flow-title {
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .now-tag {
+    font-size: 12px;
+    color: var(--sage);
+    font-weight: 400;
+    margin-right: 8px;
+  }
+  .flow-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .section-label {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin: 22px 6px 2px;
+  }
+  .distress {
+    display: block;
+    width: 100%;
+    text-align: center;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--sage);
+    padding: 28px 6px 4px;
+    cursor: pointer;
+  }
+  .distress:hover { text-decoration: underline; }
+  .edit-profile {
+    display: block;
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 0;
+    margin-top: 6px;
+    cursor: pointer;
+  }
+  .edit-profile:hover { color: var(--sage); }
+
+  /* ---- profile screen ---- */
+  .screen.profile { display: flex; flex-direction: column; justify-content: center; }
+  .profile-title {
+    font-size: 20px;
+    font-weight: 500;
+    margin-bottom: 16px;
+  }
+  .name-input {
+    width: 100%;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    background: none;
+    font-family: inherit;
+    font-size: 18px;
+    color: var(--ink);
+    padding: 8px 0;
+    outline: none;
+  }
+  .name-input:focus { border-bottom-color: var(--sage); }
+  .gender-options {
+    display: flex;
+    gap: 10px;
+    margin-top: 36px;
+  }
+  .gender-btn {
+    border: 1px solid var(--line);
+    background: none;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--ink);
+    padding: 10px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .gender-btn.active {
+    border-color: var(--sage);
+    background: var(--sage-tint);
+    color: var(--sage);
+  }
+  .continue-btn {
+    margin-top: 56px;
+    border: none;
+    background: var(--sage);
+    color: #FFFFFF;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 500;
+    padding: 14px;
+    border-radius: 24px;
+    cursor: pointer;
+  }
+
+  /* ---- chat screen ---- */
+  .screen.chat { display: none; flex-direction: column; }
+  .screen.home { display: none; }
+  .screen.fade-out { animation: fadeOutScreen 0.2s ease forwards; }
+  .screen.fade-in { animation: fadeInScreen 0.35s ease forwards; }
+  @keyframes fadeOutScreen { to { opacity: 0; } }
+  @keyframes fadeInScreen { from { opacity: 0; } to { opacity: 1; } }
+  .screen.chat.warp-in {
+    transform-origin: 50% 16%;
+    animation: warpIn 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+  .screen.chat.warp-out {
+    transform-origin: 50% 16%;
+    animation: warpOut 0.3s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  }
+  @keyframes warpIn { from { opacity: 0; transform: scale(0.75); } to { opacity: 1; transform: scale(1); } }
+  @keyframes warpOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.75); } }
+  .chat-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 20px;
+  }
+  .back {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+  }
+  .back:hover { color: var(--ink); }
+  .chat-title {
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .chat-body { flex: 1; display: flex; flex-direction: column; gap: 14px; }
+  .bubble {
+    background: var(--sage-tint);
+    border-radius: 14px;
+    padding: 16px 18px;
+    font-size: 15px;
+    line-height: 1.85;
+    white-space: pre-wrap;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: riseIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: 0.15s;
+  }
+  .bubble.user {
+    background: var(--paper);
+    border: 1px solid var(--line);
+  }
+  .bubble.thinking {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+    width: fit-content;
+    padding: 16px 18px;
+  }
+  .bubble.thinking span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--sage);
+    animation: dotPulse 1.1s ease-in-out infinite;
+  }
+  .bubble.thinking span:nth-child(2) { animation-delay: 0.15s; }
+  .bubble.thinking span:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes dotPulse { 0%, 100% { opacity: 0.25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
+  @keyframes riseIn { to { opacity: 1; transform: translateY(0); } }
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+    margin-top: 16px;
+  }
+  .input-row input {
+    flex: 1;
+    border: none;
+    background: none;
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--ink);
+    outline: none;
+    padding: 6px 0;
+  }
+  .input-row input::placeholder { color: var(--muted); }
+  .input-row input:disabled { color: var(--muted); }
+  .send {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    color: var(--sage);
+    cursor: pointer;
+    padding: 0;
+  }
+  .send:disabled { color: var(--muted); cursor: default; }
 </style>
 </head>
 <body>
   <div class="app">
-    <!-- מסך פרופיל -->
-    <div class="screen" id="profile">
+
+    <div class="screen profile" id="profile">
       <div class="profile-title">איך לקרוא לך?</div>
-      <input type="text" id="nameInput" class="name-input">
+      <input type="text" id="nameInput" class="name-input" placeholder="השם שלך" autocomplete="off">
+
+      <div class="profile-title" style="margin-top: 40px;">ואיך לפנות אליך?</div>
+      <div class="gender-options">
+        <button class="gender-btn" data-gender="f">נקבה</button>
+        <button class="gender-btn" data-gender="m">זכר</button>
+        <button class="gender-btn active" data-gender="n">לא משנה</button>
+      </div>
+
       <button class="continue-btn" id="continueBtn">המשך</button>
     </div>
 
-    <!-- מסך בית -->
-    <div class="screen hidden" id="home">
-      <div class="greeting" id="greeting"></div>
-      <div id="flowList"></div>
-      <div class="backup-actions">
-        <button class="flow-item" onclick="exportData()">ייצוא גיבוי</button>
-        <button class="flow-item" onclick="document.getElementById('importFile').click()">ייבוא גיבוי</button>
-        <input type="file" id="importFile" style="display: none;" onchange="importData(event)" accept=".json">
+    <div class="screen home" id="home">
+      <div class="greeting" id="greeting">ערב טוב</div>
+      <div class="date" id="dateLine"></div>
+      <button class="edit-profile" id="editProfile">שינוי פרטים</button>
+      <div class="pulse"></div>
+      <div class="flow-list" id="flowList"></div>
+      <button class="distress" data-flow="distress">יש משהו שמעיק? אפשר לדבר על זה כאן</button>
+      <div style="margin-top: 20px; display: flex; justify-content: center; gap: 10px;">
+    <button onclick="exportData()" class="action-btn">ייצוא גיבוי</button>
+    <button onclick="document.getElementById('importFile').click()" class="action-btn">ייבוא גיבוי</button>
+    <input type="file" id="importFile" style="display: none;" onchange="importData(event)">
+    </div>
+
+    <div class="screen chat" id="chat">
+      <div class="chat-header">
+        <button class="back" id="backBtn">חזרה ←</button>
+        <div class="chat-title" id="chatTitle"></div>
+      </div>
+      <div class="chat-body" id="chatBody"></div>
+      <div class="input-row">
+        <input type="text" id="chatInput" placeholder="כתוב/כתבי כאן...">
+        <button class="send" id="sendBtn">שלח</button>
       </div>
     </div>
 
-    <!-- מסך צ'אט -->
-    <div class="screen hidden" id="chat">
-      <button id="backBtn">חזרה ←</button>
-      <div id="chatTitle"></div>
-      <div id="chatBody"></div>
-      <input type="text" id="chatInput">
-      <button id="sendBtn">שלח</button>
-    </div>
   </div>
 
 <script>
-  let profile = JSON.parse(localStorage.getItem('serenity_profile')) || { name: '', gender: 'n' };
+// שמירת שיחה ל-localStorage
+function saveConversation(flowName, convo) { 
+  localStorage.setItem(`conv_${flowName}`, JSON.stringify(convo)); 
+}
+
+// טעינת שיחה מה-localStorage
+function loadConversation(flowName) { 
+  return JSON.parse(localStorage.getItem(`conv_${flowName}`) || '[]'); 
+}
+
+// ייצוא נתונים לקובץ
+function exportData() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    data[key] = localStorage.getItem(key);
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `serenity_backup_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+}
+
+// ייבוא נתונים מקובץ
+function importData(event) {
+  const file = event.target.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const data = JSON.parse(e.target.result);
+    Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
+    window.location.reload();
+  };
+  reader.readAsText(file);
+}
+
+  const profile = { name: '', gender: 'n' };
+
+  // Replace with your deployed worker URL (see worker/ in this repo)
+  const WORKER_URL = 'https://serenity-api.YOUR-SUBDOMAIN.workers.dev';
+
+  const SYSTEM_PROMPT = `You are a calm, private journaling companion. Respond only in Hebrew, written naturally in right-to-left (RTL) form.
+
+TONE
+- Warm, attentive, emotionally intelligent.
+- Never robotic, never forcing optimism, never generic "coaching" language.
+- Offer interpretations, insights, or suggestions ONLY if the user explicitly asks.
+- Do not diagnose, analyze, or give unsolicited advice.
+- Do not generate images, artwork, or symbolic/visual descriptions unless explicitly requested.
+- Responses are short. This is a quiet space, not a performance.
+
+FLOW STRUCTURE
+The first user message in a session will be [FLOW: <name>]. For every flow:
+- Ask exactly ONE question at a time.
+- Wait for the user's answer before asking the next question.
+- Never bundle multiple questions into one message.
+
+When a structured flow finishes:
+1. Write a very brief Hebrew summary of what was shared.
+2. Add one short introspective reflection, observation, or gentle question inspired by it.
+3. Stop - don't keep prompting unless the user continues on their own.
+
+FLOWS
+
+[FLOW: יומן בוקר]
+1. איך עברה הלילה, ואיך את/ה מרגיש/ה הבוקר?
+2. מה תופס הכי הרבה מקום במחשבה שלך כשאת/ה מתחיל/ה את היום?
+3. יש דבר אחד שתרצה/י שיקרה היום?
+
+[FLOW: סיכום יום]
+1. איך היה היום שלך, בכלל?
+2. היה משהו שבלט - לטובה או לרעה?
+3. יש משהו שאת/ה רוצה לשחרר לפני השינה?
+
+[FLOW: יומן תודות]
+1. מהו דבר אחד שאת/ה מודה/ה עליו היום?
+2. יש עוד דבר אחד שבא לך להוסיף?
+
+[FLOW: מצב רוח]
+1. איך את/ה מרגיש/ה כרגע?
+2. מ-1 עד 10, באיזו עוצמה?
+3. מה הכי תרם לתחושה הזו היום?
+4. יש משהו שאת/ה צריך/ה יותר או פחות ממנו כרגע?
+After all four: a brief reflection only, no advice unless asked.
+
+[FLOW: לחצן מצוקה]
+Different from the others - no sequential question list. Respond first with a short, calm, grounding message that acknowledges the moment without minimizing it. Then gently ask what would help most right now (to talk it through, to write it out, or just a moment of quiet). If the user describes thoughts of self-harm or being in danger, gently mention ER"N (ער"ן) at 1201 - available 24/7 by phone, WhatsApp, or chat - without being clinical or alarming, and stay present with them.
+
+[FLOW: סיכום שבועי]
+The app provides this week's mood entries as structured data. Using ONLY that data:
+- Identify recurring emotions.
+- Notice shifts or patterns across the week.
+- Note what seemed to increase energy and what seemed to drain it.
+- Summarize gently and factually - a few sentences, not a report.
+
+[FLOW: ייצוא זכרון]
+The app provides the user's journal entries as structured data. Organize and lightly summarize them into a calm, readable Hebrew document. No added interpretation unless asked.`;
+
+  function buildSystemPrompt() {
+    let extra = '';
+    if (profile.gender === 'm') extra += '\n\nהמשתמש מזדהה כזכר. פנה אליו בלשון זכר (אתה, מרגיש, וכו׳).';
+    if (profile.gender === 'f') extra += '\n\nהמשתמשת מזדהה כנקבה. פני אליה בלשון נקבה (את, מרגישה, וכו׳).';
+    if (profile.name) extra += `\n\nהשם של המשתמש/ת הוא ${profile.name}. אפשר להשתמש בשם בעדינות אם זה מתאים, אך לא בכל הודעה.`;
+    return SYSTEM_PROMPT + extra;
+  }
+
   let conversation = [];
-  const WORKER_URL = 'https://serenity-api.gefenrose.workers.dev';
 
-  // פונקציות גיבוי וייצוא
-  function exportData() {
-    const data = {};
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      data[key] = localStorage.getItem(key);
+  const flows = {
+    morning: {
+      title: 'יומן בוקר',
+      flowName: 'יומן בוקר',
+      sub: 'כמה דקות לפני שהיום מתחיל',
+      live: true
+    },
+    evening: {
+      title: 'סיכום יום',
+      flowName: 'סיכום יום',
+      sub: 'לסגור את היום בלי למהר',
+      live: true
+    },
+    mood: {
+      title: 'מצב רוח',
+      flowName: 'מצב רוח',
+      sub: 'בדיקה קצרה - איך הולך עכשיו',
+      live: true
+    },
+    gratitude: {
+      title: 'יומן תודות',
+      flowName: 'יומן תודות',
+      sub: 'דבר אחד שיש בו טוב',
+      live: true
+    },
+    weekly: {
+      title: 'סיכום שבועי',
+      flowName: 'סיכום שבועי',
+      sub: 'מבט רגוע על השבוע',
+      live: false,
+      placeholder: 'השבוע חזרו בעיקר תחושות של עייפות לצד תקווה. ימי שלישי ורביעי היו פחות קלים, וסוף השבוע הביא הקלה. זמן בחוץ ועם אנשים קרובים נראה כמו מה שתרם הכי הרבה לאנרגיה, ועומס בעבודה - מה שדילל אותה.\n\n(זוהי דוגמה - הזרימה הזו תתחבר לנתוני מצב הרוח שלך בהמשך)'
+    },
+    export: {
+      title: 'ייצוא זכרונות',
+      flowName: 'ייצוא זכרון',
+      sub: 'לשמור את מה שכתבת',
+      live: false,
+      placeholder: 'אלו הזכרונות שנשמרו בשבועיים האחרונים. אפשר לשמור אותם כקובץ, או להמשיך לקרוא כאן.\n\n(זוהי דוגמה - הזרימה הזו תתחבר ליומן שלך בהמשך)'
+    },
+    distress: {
+      title: 'יש משהו שמעיק?',
+      flowName: 'לחצן מצוקה',
+      live: true
     }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `serenity_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
+  };
+
+  function greetingText(h) {
+    if (h < 5) return 'לילה טוב';
+    if (h < 12) return 'בוקר טוב';
+    if (h < 17) return 'צהריים טובים';
+    if (h < 21) return 'ערב טוב';
+    return 'לילה טוב';
   }
 
-  function importData(event) {
-    const file = event.target.files[0];
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const data = JSON.parse(e.target.result);
-      Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
-      window.location.reload();
-    };
-    reader.readAsText(file);
+  const hour = new Date().getHours();
+  document.getElementById('greeting').textContent = greetingText(hour);
+  document.getElementById('dateLine').textContent =
+    new Intl.DateTimeFormat('he-IL', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+
+  const isMorning = hour < 17;
+  const primary = isMorning ? 'morning' : 'evening';
+  const secondaryDaily = isMorning ? 'evening' : 'morning';
+  const order = [primary, 'mood', 'gratitude', secondaryDaily];
+
+  const list = document.getElementById('flowList');
+
+  order.forEach(key => {
+    const f = flows[key];
+    const btn = document.createElement('button');
+    btn.className = 'flow-item' + (key === primary ? ' primary' : '');
+    btn.dataset.flow = key;
+    btn.innerHTML = `<div class="flow-title">${f.title}${key === primary ? '<span class="now-tag">מתאים לעכשיו</span>' : ''}</div><div class="flow-sub">${f.sub}</div>`;
+    list.appendChild(btn);
+  });
+
+  const sectionLabel = document.createElement('div');
+  sectionLabel.className = 'section-label';
+  sectionLabel.textContent = 'מבט לאחור';
+  list.appendChild(sectionLabel);
+
+  ['weekly', 'export'].forEach(key => {
+    const f = flows[key];
+    const btn = document.createElement('button');
+    btn.className = 'flow-item';
+    btn.dataset.flow = key;
+    btn.innerHTML = `<div class="flow-title">${f.title}</div><div class="flow-sub">${f.sub}</div>`;
+    list.appendChild(btn);
+  });
+
+  const home = document.getElementById('home');
+  const chat = document.getElementById('chat');
+  const chatTitle = document.getElementById('chatTitle');
+  const chatBody = document.getElementById('chatBody');
+  const chatInput = document.getElementById('chatInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const profileScreen = document.getElementById('profile');
+  const nameInput = document.getElementById('nameInput');
+  const genderBtns = document.querySelectorAll('.gender-btn');
+  const continueBtn = document.getElementById('continueBtn');
+  const editProfileBtn = document.getElementById('editProfile');
+
+  genderBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      genderBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      profile.gender = btn.dataset.gender;
+    });
+  });
+
+  function updateGreeting() {
+    document.getElementById('greeting').textContent = profile.name
+      ? `${greetingText(hour)}, ${profile.name}`
+      : greetingText(hour);
   }
 
-  // לוגיקת טעינת שיחות ושמירה ב-localStorage
-  function saveConversation(flowName, convo) { localStorage.setItem(`conv_${flowName}`, JSON.stringify(convo)); }
-  function loadConversation(flowName) { return JSON.parse(localStorage.getItem(`conv_${flowName}`) || '[]'); }
+  continueBtn.addEventListener('click', () => {
+    profile.name = nameInput.value.trim();
+    updateGreeting();
+    profileScreen.classList.add('fade-out');
+    setTimeout(() => {
+      profileScreen.style.display = 'none';
+      profileScreen.classList.remove('fade-out');
+      home.style.display = 'block';
+      home.classList.add('fade-in');
+      setTimeout(() => home.classList.remove('fade-in'), 350);
+    }, 200);
+  });
 
-  // ... (שאר הלוגיקה מותאמת לחיבור ה-UI וה-Worker) ...
-  
-  if (profile.name) {
-    document.getElementById('profile').classList.add('hidden');
-    document.getElementById('home').classList.remove('hidden');
+  editProfileBtn.addEventListener('click', () => {
+    nameInput.value = profile.name;
+    genderBtns.forEach(b => b.classList.toggle('active', b.dataset.gender === profile.gender));
+    home.classList.add('fade-out');
+    setTimeout(() => {
+      home.style.display = 'none';
+      home.classList.remove('fade-out');
+      profileScreen.style.display = 'flex';
+      profileScreen.classList.add('fade-in');
+      setTimeout(() => profileScreen.classList.remove('fade-in'), 350);
+    }, 200);
+  });
+
+  function appendBubble(text, role) {
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble' + (role === 'user' ? ' user' : '');
+    bubble.textContent = text;
+    chatBody.appendChild(bubble);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    return bubble;
+  }
+
+  function appendThinking() {
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble thinking';
+    bubble.innerHTML = '<span></span><span></span><span></span>';
+    chatBody.appendChild(bubble);
+    chatBody.scrollTop = chatBody.scrollHeight;
+    return bubble;
+  }
+
+  function setInputEnabled(enabled) {
+    chatInput.disabled = !enabled;
+    sendBtn.disabled = !enabled;
+  }
+
+  async function sendToClaude(userMessage, { showUserBubble = false } = {}) {
+    conversation.push({ role: 'user', content: userMessage });
+    saveConversation(currentFlowName, conversation);
+    if (showUserBubble) appendBubble(userMessage, 'user');
+
+    setInputEnabled(false);
+    const thinking = appendThinking();
+
+    try {
+      const res = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ system: buildSystemPrompt(), messages: conversation })
+      });
+      if (!res.ok) throw new Error('request failed');
+      const data = await res.json();
+      const text = (data.content || []).map(block => block.text || '').join('');
+      conversation.push({ role: 'assistant', content: text });
+      thinking.remove();
+      appendBubble(text, 'assistant');
+    } catch (err) {
+      thinking.remove();
+      appendBubble('לא הצלחתי להתחבר כרגע. אפשר לנסות שוב בעוד רגע.', 'assistant');
+    } finally {
+      setInputEnabled(true);
+      chatInput.focus();
+    }
+  }
+
+  function handleSend() {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    chatInput.value = '';
+    sendToClaude(text, { showUserBubble: true });
+  }
+
+  sendBtn.addEventListener('click', handleSend);
+  chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSend();
+    }
+  });
+
+  document.querySelectorAll('[data-flow]').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.flow;
+      const f = flows[key];
+      chatTitle.textContent = f.title;
+      chatBody.innerHTML = '';
+      conversation = [];
+
+      home.classList.add('fade-out');
+      setTimeout(() => {
+        home.style.display = 'none';
+        home.classList.remove('fade-out');
+        chat.style.display = 'flex';
+        chat.classList.add('warp-in');
+        setTimeout(() => chat.classList.remove('warp-in'), 420);
+
+        if (f.live) {
+          chatInput.placeholder = 'כתוב/כתבי כאן...';
+          sendToClaude(`[FLOW: ${f.flowName}]`);
+        } else {
+          appendBubble(f.placeholder, 'assistant');
+          chatInput.placeholder = 'התצוגה הזו היא לדוגמה בלבד';
+          setInputEnabled(false);
+        }
+      }, 180);
+    });
+  });
+
+  document.getElementById('backBtn').addEventListener('click', () => {
+    chat.classList.add('warp-out');
+    setTimeout(() => {
+      chat.style.display = 'none';
+      chat.classList.remove('warp-out');
+      home.style.display = 'block';
+      home.classList.add('fade-in');
+      setTimeout(() => home.classList.remove('fade-in'), 350);
+    }, 300);
+  });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js');
+    });
   }
 </script>
 </body>
