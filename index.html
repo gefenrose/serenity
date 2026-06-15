@@ -717,7 +717,6 @@ The app provides the user's journal entries as structured data. Organize and lig
 
   async function sendToClaude(userMessage, { showUserBubble = false } = {}) {
     conversation.push({ role: 'user', content: userMessage });
-    saveConversation(currentFlowName, conversation);
     if (showUserBubble) appendBubble(userMessage, 'user');
 
     setInputEnabled(false);
@@ -868,11 +867,17 @@ The app provides the user's journal entries as structured data. Organize and lig
   }
 
   // TEMPORARY debug aid - remove once the blank-page issue is found.
-  window.addEventListener('error', (e) => {
+  function showDebugError(text) {
     const el = document.createElement('div');
     el.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#fee;color:#900;font-size:11px;padding:8px;z-index:9999;white-space:pre-wrap;direction:ltr;text-align:left;font-family:monospace;';
-    el.textContent = 'Error: ' + e.message + '\n' + e.filename + ':' + e.lineno + ':' + e.colno;
+    el.textContent = text;
     document.body.appendChild(el);
+  }
+  window.addEventListener('error', (e) => {
+    showDebugError('Error: ' + e.message + '\n' + e.filename + ':' + e.lineno + ':' + e.colno);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    showDebugError('Unhandled rejection: ' + (e.reason && e.reason.message || e.reason));
   });
 </script>
 </body>
