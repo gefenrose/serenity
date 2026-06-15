@@ -357,6 +357,10 @@
       <div class="pulse"></div>
       <div class="flow-list" id="flowList"></div>
       <button class="distress" data-flow="distress">יש משהו שמעיק? אפשר לדבר על זה כאן</button>
+      <div style="margin-top: 20px; display: flex; justify-content: center; gap: 10px;">
+    <button onclick="exportData()" class="action-btn">ייצוא גיבוי</button>
+    <button onclick="document.getElementById('importFile').click()" class="action-btn">ייבוא גיבוי</button>
+    <input type="file" id="importFile" style="display: none;" onchange="importData(event)">
     </div>
 
     <div class="screen chat" id="chat">
@@ -428,7 +432,7 @@
   }
 
   // Replace with your deployed worker URL (see worker/ in this repo)
-  const WORKER_URL = 'https://serenity-api.gefenrose.workers.dev';
+  const WORKER_URL = 'https://serenity-api.YOUR-SUBDOMAIN.workers.dev';
 
   const SYSTEM_PROMPT = `You are a calm, private journaling companion. Respond only in Hebrew, written naturally in right-to-left (RTL) form.
 
@@ -659,6 +663,7 @@ The app provides the user's journal entries as structured data. Organize and lig
 
   async function sendToClaude(userMessage, { showUserBubble = false } = {}) {
     conversation.push({ role: 'user', content: userMessage });
+    saveConversation(currentFlowName, conversation);
     if (showUserBubble) appendBubble(userMessage, 'user');
 
     setInputEnabled(false);
