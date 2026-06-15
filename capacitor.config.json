@@ -1,0 +1,8 @@
+{
+  "appId": "com.gefenrose.serenity",
+  "appName": "יומן רגוע",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

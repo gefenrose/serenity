@@ -861,7 +861,11 @@ The app provides the user's journal entries as structured data. Organize and lig
     updateGreeting();
   }
 
-  if ('serviceWorker' in navigator) {
+  // Service worker is for the GitHub Pages PWA only. In the Capacitor
+  // native app, assets are bundled directly and a SW isn't needed
+  // (and can misbehave inside the native WebView).
+  const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  if ('serviceWorker' in navigator && !isNative) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js');
     });
