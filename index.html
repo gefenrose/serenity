@@ -158,6 +158,22 @@
     cursor: pointer;
   }
   .edit-profile:hover { color: var(--sage); }
+  .backup-row {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+  }
+  .action-btn {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+  }
+  .action-btn:hover { color: var(--sage); }
 
   /* ---- profile screen ---- */
   .screen.profile { display: flex; flex-direction: column; justify-content: center; }
@@ -357,11 +373,11 @@
       <div class="pulse"></div>
       <div class="flow-list" id="flowList"></div>
       <button class="distress" data-flow="distress">יש משהו שמעיק? אפשר לדבר על זה כאן</button>
-      <div style="margin-top: 20px; display: flex; justify-content: center; gap: 10px;">
-    <button onclick="exportData()" class="action-btn">ייצוא גיבוי</button>
-    <button onclick="document.getElementById('importFile').click()" class="action-btn">ייבוא גיבוי</button>
-    <input type="file" id="importFile" style="display: none;" onchange="importData(event)">
-    </div>
+      <div class="backup-row">
+        <button onclick="exportData()" class="action-btn">ייצוא גיבוי</button>
+        <button onclick="document.getElementById('importFile').click()" class="action-btn">ייבוא גיבוי</button>
+        <input type="file" id="importFile" accept="application/json" style="display: none;" onchange="importData(event)">
+      </div>
 
     <div class="screen chat" id="chat">
       <div class="chat-header">
@@ -431,8 +447,40 @@
     return `[${e.flowTitle} - ${date}]\n${lines.join('\n')}`;
   }
 
+  // Full backup of everything in localStorage (profile + entries), as JSON.
+  function exportData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      data[key] = localStorage.getItem(key);
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `serenity_backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+  }
+
+  // Restore a full backup created by exportData().
+  function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
+        window.location.reload();
+      } catch {
+        alert('הקובץ לא תקין.');
+      }
+    };
+    reader.readAsText(file);
+  }
+
   // Replace with your deployed worker URL (see worker/ in this repo)
-  const WORKER_URL = 'https://serenity-api.YOUR-SUBDOMAIN.workers.dev';
+  const WORKER_URL = 'https://serenity-api.gefenrose.workers.dev';
 
   const SYSTEM_PROMPT = `You are a calm, private journaling companion. Respond only in Hebrew, written naturally in right-to-left (RTL) form.
 
