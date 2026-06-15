@@ -812,26 +812,32 @@ The app provides the user's journal entries as structured data. Organize and lig
 
       home.classList.add('fade-out');
       setTimeout(() => {
-        home.style.display = 'none';
-        home.classList.remove('fade-out');
-        chat.style.display = 'flex';
-        chat.classList.add('warp-in');
-        setTimeout(() => chat.classList.remove('warp-in'), 420);
-        chatInput.placeholder = 'כתוב/כתבי כאן...';
+        try {
+          home.style.display = 'none';
+          home.classList.remove('fade-out');
+          chat.style.display = 'flex';
+          chat.classList.add('warp-in');
+          setTimeout(() => chat.classList.remove('warp-in'), 420);
+          chatInput.placeholder = 'כתוב/כתבי כאן...';
 
-        if (f.special === 'weekly') {
-          openWeekly();
-        } else if (f.special === 'export') {
-          openExport();
-        } else {
-          currentEntry = {
-            id: `${key}-${Date.now()}`,
-            flowKey: key,
-            flowTitle: f.title,
-            date: new Date().toISOString(),
-            messages: []
-          };
-          sendToClaude(`[FLOW: ${f.flowName}]`);
+          if (f.special === 'weekly') {
+            openWeekly();
+          } else if (f.special === 'export') {
+            openExport();
+          } else {
+            currentEntry = {
+              id: `${key}-${Date.now()}`,
+              flowKey: key,
+              flowTitle: f.title,
+              date: new Date().toISOString(),
+              messages: []
+            };
+            sendToClaude(`[FLOW: ${f.flowName}]`);
+          }
+        } catch (err) {
+          chat.style.display = 'flex';
+          chatBody.innerHTML = '';
+          appendBubble('שגיאה: ' + err.message, 'assistant');
         }
       }, 180);
     });
@@ -860,6 +866,14 @@ The app provides the user's journal entries as structured data. Organize and lig
       navigator.serviceWorker.register('./sw.js');
     });
   }
+
+  // TEMPORARY debug aid - remove once the blank-page issue is found.
+  window.addEventListener('error', (e) => {
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#fee;color:#900;font-size:11px;padding:8px;z-index:9999;white-space:pre-wrap;direction:ltr;text-align:left;font-family:monospace;';
+    el.textContent = 'Error: ' + e.message + '\n' + e.filename + ':' + e.lineno + ':' + e.colno;
+    document.body.appendChild(el);
+  });
 </script>
 </body>
 </html>
