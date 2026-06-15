@@ -400,6 +400,27 @@
   </div>
 
 <script>
+  // TEMPORARY debug aid - remove once the blank-page issue is found.
+  const __debugLines = [];
+  function dbg(msg) {
+    __debugLines.push(msg);
+    let el = document.getElementById('__debug');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = '__debug';
+      el.style.cssText = 'position:fixed;top:0;left:0;right:0;max-height:45%;overflow:auto;background:rgba(255,255,180,0.97);color:#333;font-size:10px;line-height:1.4;padding:6px;z-index:99999;white-space:pre-wrap;direction:ltr;text-align:left;font-family:monospace;border-bottom:2px solid #cc0;';
+      document.body.appendChild(el);
+    }
+    el.textContent = __debugLines.join('\n');
+  }
+  window.addEventListener('error', (e) => dbg('ERROR: ' + e.message + ' @' + e.filename + ':' + e.lineno));
+  window.addEventListener('unhandledrejection', (e) => dbg('REJECTION: ' + (e.reason && e.reason.message || e.reason)));
+  dbg('script start. viewport=' + window.innerWidth + 'x' + window.innerHeight);
+  window.addEventListener('DOMContentLoaded', () => {
+    const app = document.querySelector('.app');
+    dbg('DOMContentLoaded. app size=' + app.offsetWidth + 'x' + app.offsetHeight);
+  });
+
   const STORAGE_PROFILE = 'serenity:profile';
   const STORAGE_ENTRIES = 'serenity:entries';
 
@@ -873,26 +894,6 @@ The app provides the user's journal entries as structured data. Organize and lig
     });
   }
 
-  // TEMPORARY debug aid - remove once the blank-page issue is found.
-  const __debugLines = [];
-  function dbg(msg) {
-    __debugLines.push(msg);
-    let el = document.getElementById('__debug');
-    if (!el) {
-      el = document.createElement('div');
-      el.id = '__debug';
-      el.style.cssText = 'position:fixed;top:0;left:0;right:0;max-height:45%;overflow:auto;background:rgba(255,255,180,0.97);color:#333;font-size:10px;line-height:1.4;padding:6px;z-index:99999;white-space:pre-wrap;direction:ltr;text-align:left;font-family:monospace;border-bottom:2px solid #cc0;';
-      document.body.appendChild(el);
-    }
-    el.textContent = __debugLines.join('\n');
-  }
-  window.addEventListener('error', (e) => dbg('ERROR: ' + e.message + ' @' + e.filename + ':' + e.lineno));
-  window.addEventListener('unhandledrejection', (e) => dbg('REJECTION: ' + (e.reason && e.reason.message || e.reason)));
-  dbg('script start. viewport=' + window.innerWidth + 'x' + window.innerHeight);
-  window.addEventListener('DOMContentLoaded', () => {
-    const app = document.querySelector('.app');
-    dbg('DOMContentLoaded. app size=' + app.offsetWidth + 'x' + app.offsetHeight);
-  });
 </script>
 </body>
 </html>
