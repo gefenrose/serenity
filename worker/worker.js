@@ -46,22 +46,27 @@ export default {
       return new Response('Missing system or messages', { status: 400, headers: corsHeaders(origin) });
     }
 
-    const messages = [
-      { role: 'system', content: body.system },
-      ...body.messages
-    ];
+    // Gemini's native API uses "model" instead of "assistant" for the
+    // assistant role, and keeps the system prompt in a separate field.
+    const contents = body.messages.map(m => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }));
 
-    const upstream = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.GEMINI_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: GEMINI_MODEL,
-        messages
-      })
-    });
+    const upstream = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': env.GEMINI_API_KEY
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: body.system }] },
+          contents
+        })
+      }
+    );
 
     if (!upstream.ok) {
       const errText = await upstream.text();
@@ -72,7 +77,7 @@ export default {
     }
 
     const data = await upstream.json();
-    const text = data.choices?.[0]?.message?.content || '';
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     return new Response(JSON.stringify({ content: [{ text }] }), {
       headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' }
