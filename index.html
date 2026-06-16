@@ -251,6 +251,7 @@
   }
   @keyframes warpIn { from { opacity: 0; transform: scale(0.75); } to { opacity: 1; transform: scale(1); } }
   @keyframes warpOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.75); } }
+  .screen.chat.readonly .input-row { display: none; }
   .chat-header {
     display: flex;
     align-items: baseline;
@@ -357,6 +358,46 @@
     padding: 0 0 6px;
   }
   .send:disabled { color: var(--muted); cursor: default; }
+
+  /* ---- history screen ---- */
+  .screen.history { display: none; flex-direction: column; }
+  .history-list { flex: 1; overflow-y: auto; margin-top: 4px; }
+  .history-item {
+    display: block;
+    width: 100%;
+    text-align: right;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--line);
+    padding: 16px 6px;
+    font-family: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .history-item:hover { background: var(--sage-tint); }
+  .history-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+    gap: 12px;
+  }
+  .history-item-title { font-size: 15px; font-weight: 500; }
+  .history-item-date { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .history-item-preview {
+    font-size: 13px;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 60px;
+  }
 </style>
 </head>
 <body>
@@ -400,6 +441,14 @@
         <textarea id="chatInput" placeholder="כתוב/כתבי כאן..." rows="1"></textarea>
         <button class="send" id="sendBtn">שלח</button>
       </div>
+    </div>
+
+    <div class="screen history" id="history">
+      <div class="chat-header">
+        <button class="back" id="historyBackBtn">חזרה ←</button>
+        <div class="chat-title">היסטוריה</div>
+      </div>
+      <div class="history-list" id="historyList"></div>
     </div>
 
   </div>
@@ -560,6 +609,7 @@ The app provides the user's journal entries as structured data. Organize and lig
 
   let conversation = [];
   let currentEntry = null;
+  let chatReturnTo = 'home';
 
   const flows = {
     morning: {
@@ -634,6 +684,12 @@ The app provides the user's journal entries as structured data. Organize and lig
   sectionLabel.textContent = 'מבט לאחור';
   list.appendChild(sectionLabel);
 
+  const historyBtn = document.createElement('button');
+  historyBtn.className = 'flow-item';
+  historyBtn.innerHTML = `<div class="flow-title">היסטוריה</div><div class="flow-sub">כל מה שכתבת, לפי תאריך</div>`;
+  historyBtn.addEventListener('click', openHistoryScreen);
+  list.appendChild(historyBtn);
+
   ['weekly', 'export'].forEach(key => {
     const f = flows[key];
     const btn = document.createElement('button');
@@ -645,6 +701,7 @@ The app provides the user's journal entries as structured data. Organize and lig
 
   const home = document.getElementById('home');
   const chat = document.getElementById('chat');
+  const historyScreen = document.getElementById('history');
   const chatTitle = document.getElementById('chatTitle');
   const chatBody = document.getElementById('chatBody');
   const chatInput = document.getElementById('chatInput');
@@ -820,6 +877,7 @@ The app provides the user's journal entries as structured data. Organize and lig
       chatBody.innerHTML = '';
       conversation = [];
       currentEntry = null;
+      chatReturnTo = 'home';
 
       home.classList.add('fade-out');
       setTimeout(() => {
@@ -859,10 +917,105 @@ The app provides the user's journal entries as structured data. Organize and lig
     setTimeout(() => {
       chat.style.display = 'none';
       chat.classList.remove('warp-out');
+      chat.classList.remove('readonly');
+      if (chatReturnTo === 'history') {
+        historyScreen.style.display = 'flex';
+        historyScreen.classList.add('fade-in');
+        setTimeout(() => historyScreen.classList.remove('fade-in'), 350);
+      } else {
+        home.style.display = 'block';
+        home.classList.add('fade-in');
+        setTimeout(() => home.classList.remove('fade-in'), 350);
+      }
+      chatReturnTo = 'home';
+    }, 300);
+  });
+
+  function renderHistoryList() {
+    const listEl = document.getElementById('historyList');
+    listEl.innerHTML = '';
+    const entries = loadEntries().slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (entries.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'history-empty';
+      empty.textContent = 'עדיין אין רשומות שמורות.';
+      listEl.appendChild(empty);
+      return;
+    }
+
+    entries.forEach(entry => {
+      const realMessages = entry.messages.filter(m => !(m.role === 'user' && m.content.startsWith('[FLOW:')));
+      const preview = realMessages.length ? realMessages[realMessages.length - 1].content : '';
+      const date = new Date(entry.date).toLocaleDateString('he-IL');
+
+      const btn = document.createElement('button');
+      btn.className = 'history-item';
+
+      const top = document.createElement('div');
+      top.className = 'history-item-top';
+      const title = document.createElement('span');
+      title.className = 'history-item-title';
+      title.textContent = entry.flowTitle;
+      const dateEl = document.createElement('span');
+      dateEl.className = 'history-item-date';
+      dateEl.textContent = date;
+      top.appendChild(title);
+      top.appendChild(dateEl);
+
+      const previewEl = document.createElement('div');
+      previewEl.className = 'history-item-preview';
+      previewEl.textContent = preview;
+
+      btn.appendChild(top);
+      btn.appendChild(previewEl);
+      btn.addEventListener('click', () => openHistoryEntry(entry));
+      listEl.appendChild(btn);
+    });
+  }
+
+  function openHistoryEntry(entry) {
+    const date = new Date(entry.date).toLocaleDateString('he-IL');
+    chatTitle.textContent = `${entry.flowTitle} · ${date}`;
+    chatBody.innerHTML = '';
+    chatReturnTo = 'history';
+    chat.classList.add('readonly');
+
+    historyScreen.classList.add('fade-out');
+    setTimeout(() => {
+      historyScreen.style.display = 'none';
+      historyScreen.classList.remove('fade-out');
+      chat.style.display = 'flex';
+      chat.classList.add('warp-in');
+      setTimeout(() => chat.classList.remove('warp-in'), 420);
+
+      entry.messages
+        .filter(m => !(m.role === 'user' && m.content.startsWith('[FLOW:')))
+        .forEach(m => appendBubble(m.content, m.role === 'user' ? 'user' : 'assistant'));
+    }, 180);
+  }
+
+  function openHistoryScreen() {
+    renderHistoryList();
+    home.classList.add('fade-out');
+    setTimeout(() => {
+      home.style.display = 'none';
+      home.classList.remove('fade-out');
+      historyScreen.style.display = 'flex';
+      historyScreen.classList.add('fade-in');
+      setTimeout(() => historyScreen.classList.remove('fade-in'), 350);
+    }, 180);
+  }
+
+  document.getElementById('historyBackBtn').addEventListener('click', () => {
+    historyScreen.classList.add('fade-out');
+    setTimeout(() => {
+      historyScreen.style.display = 'none';
+      historyScreen.classList.remove('fade-out');
       home.style.display = 'block';
       home.classList.add('fade-in');
       setTimeout(() => home.classList.remove('fade-in'), 350);
-    }, 300);
+    }, 200);
   });
 
   loadProfile();
