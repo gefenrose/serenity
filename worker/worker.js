@@ -1,5 +1,5 @@
 // Proxies chat requests from the serenity app (PWA + Capacitor native builds)
-// to Google's Gemini API (free tier, no card required), keeping the API key
+// to Groq's API (free tier, OpenAI-compatible), keeping the API key
 // server-side. Deploy with wrangler (see README).
 //
 // The response is translated back into the same shape the frontend
@@ -12,7 +12,7 @@ const ALLOWED_ORIGINS = new Set([
   'https://localhost',           // Capacitor Android (default scheme since v6) / iOS with iosScheme:'https'
   'http://localhost'             // Capacitor Android (pre-v6 default scheme)
 ]);
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 function corsHeaders(origin) {
   return {
@@ -46,27 +46,22 @@ export default {
       return new Response('Missing system or messages', { status: 400, headers: corsHeaders(origin) });
     }
 
-    // Gemini's native API uses "model" instead of "assistant" for the
-    // assistant role, and keeps the system prompt in a separate field.
-    const contents = body.messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
+    const messages = [
+      { role: 'system', content: body.system },
+      ...body.messages
+    ];
 
-    const upstream = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': env.GEMINI_API_KEY
-        },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: body.system }] },
-          contents
-        })
-      }
-    );
+    const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${env.GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages
+      })
+    });
 
     if (!upstream.ok) {
       const errText = await upstream.text();
@@ -77,7 +72,7 @@ export default {
     }
 
     const data = await upstream.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const text = data.choices?.[0]?.message?.content || '';
 
     return new Response(JSON.stringify({ content: [{ text }] }), {
       headers: { ...corsHeaders(origin), 'Content-Type': 'application/json' }
