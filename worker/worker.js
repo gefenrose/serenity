@@ -7,16 +7,17 @@
 // need to know which model is behind this.
 
 const ALLOWED_ORIGINS = new Set([
-  'https://gefenrose.github.io', // GitHub Pages PWA
-  'capacitor://localhost',       // Capacitor iOS
-  'https://localhost',           // Capacitor Android (default scheme since v6) / iOS with iosScheme:'https'
-  'http://localhost'             // Capacitor Android (pre-v6 default scheme)
+  'https://gefens-serenity.pages.dev', // Cloudflare Pages PWA
+  'https://gefenrose.github.io',       // GitHub Pages PWA (legacy/alt deployment)
+  'capacitor://localhost',             // Capacitor iOS
+  'https://localhost',                 // Capacitor Android (default scheme since v6) / iOS with iosScheme:'https'
+  'http://localhost'                   // Capacitor Android (pre-v6 default scheme)
 ]);
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 function corsHeaders(origin) {
   return {
-    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'https://gefenrose.github.io',
+    'Access-Control-Allow-Origin': ALLOWED_ORIGINS.has(origin) ? origin : 'https://gefens-serenity.pages.dev',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Vary': 'Origin'
