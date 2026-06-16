@@ -325,13 +325,13 @@
   @keyframes riseIn { to { opacity: 1; transform: translateY(0); } }
   .input-row {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 10px;
     border-top: 1px solid var(--line);
     padding-top: 14px;
     margin-top: 16px;
   }
-  .input-row input {
+  .input-row textarea {
     flex: 1;
     border: none;
     background: none;
@@ -340,9 +340,13 @@
     color: var(--ink);
     outline: none;
     padding: 6px 0;
+    resize: none;
+    max-height: 120px;
+    overflow-y: auto;
+    line-height: 1.4;
   }
-  .input-row input::placeholder { color: var(--muted); }
-  .input-row input:disabled { color: var(--muted); }
+  .input-row textarea::placeholder { color: var(--muted); }
+  .input-row textarea:disabled { color: var(--muted); }
   .send {
     background: none;
     border: none;
@@ -350,7 +354,7 @@
     font-size: 14px;
     color: var(--sage);
     cursor: pointer;
-    padding: 0;
+    padding: 0 0 6px;
   }
   .send:disabled { color: var(--muted); cursor: default; }
 </style>
@@ -393,7 +397,7 @@
       </div>
       <div class="chat-body" id="chatBody"></div>
       <div class="input-row">
-        <input type="text" id="chatInput" placeholder="כתוב/כתבי כאן...">
+        <textarea id="chatInput" placeholder="כתוב/כתבי כאן..." rows="1"></textarea>
         <button class="send" id="sendBtn">שלח</button>
       </div>
     </div>
@@ -748,16 +752,23 @@ The app provides the user's journal entries as structured data. Organize and lig
     }
   }
 
+  function autoResizeInput() {
+    chatInput.style.height = 'auto';
+    chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+  }
+  chatInput.addEventListener('input', autoResizeInput);
+
   function handleSend() {
     const text = chatInput.value.trim();
     if (!text) return;
     chatInput.value = '';
+    autoResizeInput();
     sendToClaude(text, { showUserBubble: true });
   }
 
   sendBtn.addEventListener('click', handleSend);
   chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
