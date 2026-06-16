@@ -251,7 +251,6 @@
   }
   @keyframes warpIn { from { opacity: 0; transform: scale(0.75); } to { opacity: 1; transform: scale(1); } }
   @keyframes warpOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.75); } }
-  .screen.chat.readonly .input-row { display: none; }
   .chat-header {
     display: flex;
     align-items: baseline;
@@ -366,12 +365,8 @@
     display: block;
     width: 100%;
     text-align: right;
-    background: none;
-    border: none;
     border-bottom: 1px solid var(--line);
     padding: 16px 6px;
-    font-family: inherit;
-    color: inherit;
     cursor: pointer;
     transition: background 0.15s ease;
   }
@@ -384,7 +379,18 @@
     gap: 12px;
   }
   .history-item-title { font-size: 15px; font-weight: 500; }
+  .history-item-meta { display: flex; align-items: baseline; gap: 10px; flex-shrink: 0; }
   .history-item-date { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .history-delete {
+    background: none;
+    border: none;
+    font-family: inherit;
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+  }
+  .history-delete:hover { color: #C0524A; }
   .history-item-preview {
     font-size: 13px;
     color: var(--muted);
@@ -917,7 +923,6 @@ The app provides the user's journal entries as structured data. Organize and lig
     setTimeout(() => {
       chat.style.display = 'none';
       chat.classList.remove('warp-out');
-      chat.classList.remove('readonly');
       if (chatReturnTo === 'history') {
         historyScreen.style.display = 'flex';
         historyScreen.classList.add('fade-in');
@@ -949,29 +954,51 @@ The app provides the user's journal entries as structured data. Organize and lig
       const preview = realMessages.length ? realMessages[realMessages.length - 1].content : '';
       const date = new Date(entry.date).toLocaleDateString('he-IL');
 
-      const btn = document.createElement('button');
-      btn.className = 'history-item';
+      const item = document.createElement('div');
+      item.className = 'history-item';
 
       const top = document.createElement('div');
       top.className = 'history-item-top';
+
       const title = document.createElement('span');
       title.className = 'history-item-title';
       title.textContent = entry.flowTitle;
+
+      const meta = document.createElement('div');
+      meta.className = 'history-item-meta';
+
       const dateEl = document.createElement('span');
       dateEl.className = 'history-item-date';
       dateEl.textContent = date;
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'history-delete';
+      deleteBtn.textContent = 'מחיקה';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteEntry(entry.id);
+      });
+
+      meta.appendChild(dateEl);
+      meta.appendChild(deleteBtn);
       top.appendChild(title);
-      top.appendChild(dateEl);
+      top.appendChild(meta);
 
       const previewEl = document.createElement('div');
       previewEl.className = 'history-item-preview';
       previewEl.textContent = preview;
 
-      btn.appendChild(top);
-      btn.appendChild(previewEl);
-      btn.addEventListener('click', () => openHistoryEntry(entry));
-      listEl.appendChild(btn);
+      item.appendChild(top);
+      item.appendChild(previewEl);
+      item.addEventListener('click', () => openHistoryEntry(entry));
+      listEl.appendChild(item);
     });
+  }
+
+  function deleteEntry(id) {
+    if (!confirm('למחוק את הרשומה הזו? הפעולה לא הפיכה.')) return;
+    saveEntries(loadEntries().filter(e => e.id !== id));
+    renderHistoryList();
   }
 
   function openHistoryEntry(entry) {
@@ -979,7 +1006,8 @@ The app provides the user's journal entries as structured data. Organize and lig
     chatTitle.textContent = `${entry.flowTitle} · ${date}`;
     chatBody.innerHTML = '';
     chatReturnTo = 'history';
-    chat.classList.add('readonly');
+    conversation = entry.messages.slice();
+    currentEntry = entry;
 
     historyScreen.classList.add('fade-out');
     setTimeout(() => {
@@ -992,6 +1020,10 @@ The app provides the user's journal entries as structured data. Organize and lig
       entry.messages
         .filter(m => !(m.role === 'user' && m.content.startsWith('[FLOW:')))
         .forEach(m => appendBubble(m.content, m.role === 'user' ? 'user' : 'assistant'));
+
+      chatInput.placeholder = 'כתוב/כתבי כאן...';
+      setInputEnabled(true);
+      chatInput.focus();
     }, 180);
   }
 
