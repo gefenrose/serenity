@@ -10,7 +10,7 @@ A calm, text-based RTL Hebrew journaling companion - PWA + Capacitor native app.
 - `sw.js` - network-first service worker for offline support + auto-update
   (PWA only - skipped when running as the native app)
 - `icons/` - app icons (192, 512, apple-touch, favicon)
-- `worker/` - Cloudflare Worker that proxies chat requests to the Gemini API
+- `worker/` - Cloudflare Worker that proxies chat requests to OpenRouter
 - `build.js` / `www/` - copies the files above into `www/`, the web root
   Capacitor expects (generated, not committed)
 - `capacitor.config.json`, `package.json` - Capacitor project config
@@ -24,25 +24,33 @@ and a quiet distress check-in - all defined in the `flows` object in
 ## Status
 
 The UI shell, onboarding, and all flows (יומן בוקר, סיכום יום, מצב רוח,
-יומן תודות, סיכום שבועי, ייצוא זכרונות, לחצן מצוקה) are wired up to Gemini
-via the worker below, with סיכום שבועי and ייצוא זכרונות pulling real
-entries from local storage.
+יומן תודות, סיכום שבועי, ייצוא זכרונות, לחצן מצוקה) are wired up to
+OpenRouter via the worker below, with סיכום שבועי and ייצוא זכרונות
+pulling real entries from local storage.
 
 ## Set up the worker
 
-Uses Google's Gemini API (`gemini-2.5-flash`), which has a genuinely free
-tier - no card required.
+Uses OpenRouter (openrouter.ai), which gives one key/account access to
+many providers' models, including free-tier options - no card required
+for free models. The worker defaults to a free Gemini model (good Hebrew
++ reasoning) and automatically falls back to OpenRouter's auto-selecting
+free router if that specific model is ever retired upstream.
 
-1. Get a free API key at https://aistudio.google.com/apikey
+1. Get a free API key at https://openrouter.ai/keys
 2. `cd worker`
 3. Log in: `npx wrangler login`
 4. Add the key as a secret:
-   `npx wrangler secret put GEMINI_API_KEY`
+   `npx wrangler secret put OPENROUTER_API_KEY`
 5. Deploy: `npx wrangler deploy`
 6. Copy the resulting `*.workers.dev` URL into `WORKER_URL` near the top of
    the `<script>` in `index.html`, then commit and push.
 
-The worker translates Gemini's response back into the same shape the
+Free-tier model IDs on OpenRouter rotate as providers add/remove free
+hosting - check current options at openrouter.ai/models?max_price=0 and
+update `PRIMARY_MODEL` in `worker/worker.js` if the default one listed
+there has been retired.
+
+The worker translates OpenRouter's response back into the same shape the
 frontend expects, so `index.html` doesn't need to know which model is
 behind it - swapping providers again later only means editing `worker.js`.
 

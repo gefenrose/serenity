@@ -1,5 +1,5 @@
 // Proxies chat requests from the serenity app (PWA + Capacitor native builds)
-// to Groq's API (free tier, OpenAI-compatible), keeping the API key
+// to OpenRouter (free tier, OpenAI-compatible), keeping the API key
 // server-side. Deploy with wrangler (see README).
 //
 // The response is translated back into the same shape the frontend
@@ -8,12 +8,18 @@
 
 const ALLOWED_ORIGINS = new Set([
   'https://gefens-serenity.pages.dev', // Cloudflare Pages PWA
-  'https://gefenrose.github.io',       // GitHub Pages PWA (legacy/alt deployment)
+  'https://gefenrose.github.io',       // GitHub Pages PWA (legacy/alt deployment) - covers both /serenity/ and /ofek/
   'capacitor://localhost',             // Capacitor iOS
   'https://localhost',                 // Capacitor Android (default scheme since v6) / iOS with iosScheme:'https'
   'http://localhost'                   // Capacitor Android (pre-v6 default scheme)
 ]);
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+// Chosen for Hebrew quality + reasoning. OpenRouter's free catalog rotates,
+// so if this model gets retired/renamed (upstream returns 400/404), the
+// code below automatically retries with the auto-selecting free router.
+// Re-check current free model IDs at https://openrouter.ai/models?max_price=0
+const PRIMARY_MODEL = 'google/gemini-2.0-flash-exp:free';
+const FALLBACK_MODEL = 'openrouter/free';
 
 function corsHeaders(origin) {
   return {
@@ -22,6 +28,20 @@ function corsHeaders(origin) {
     'Access-Control-Allow-Headers': 'Content-Type',
     'Vary': 'Origin'
   };
+}
+
+function callOpenRouter(model, messages, apiKey) {
+  return fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      // OpenRouter asks for these on free-tier requests for attribution/priority
+      'HTTP-Referer': 'https://gefenrose.github.io',
+      'X-Title': 'Serenity & Ofek'
+    },
+    body: JSON.stringify({ model, messages })
+  });
 }
 
 export default {
@@ -52,17 +72,13 @@ export default {
       ...body.messages
     ];
 
-    const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${env.GROQ_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: GROQ_MODEL,
-        messages
-      })
-    });
+    let upstream = await callOpenRouter(PRIMARY_MODEL, messages, env.OPENROUTER_API_KEY);
+
+    // If the primary free model was retired/renamed upstream, fall back
+    // to OpenRouter's auto-selecting free router rather than failing outright
+    if (upstream.status === 400 || upstream.status === 404) {
+      upstream = await callOpenRouter(FALLBACK_MODEL, messages, env.OPENROUTER_API_KEY);
+    }
 
     if (!upstream.ok) {
       const errText = await upstream.text();
