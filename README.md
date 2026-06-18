@@ -37,19 +37,17 @@ live and silently fell through to a random small free model with poor
 Hebrew - reverted back to Groq until a properly-verified alternative is
 in place.)
 
-### Ongoing changes: auto-deploy via GitHub Actions
+### Ongoing changes: deploys automatically already
 
-Once set up (below), any push to `main` that touches `worker/**`
-deploys automatically - no need to open Cloudflare's editor at all.
+This repo's Worker is connected to Cloudflare via their native Git
+integration (Workers Builds) - every push to `main` that touches
+`worker/` deploys automatically, visible as a commit status/check on
+GitHub. No separate CI workflow or Cloudflare editor needed for code
+changes.
 
-1. Cloudflare dashboard → profile icon (top right) → My Profile → API
-   Tokens → Create Token → use the **Edit Cloudflare Workers** template
-   → Continue to summary → Create Token → copy it
-2. This repo on GitHub → Settings → Secrets and variables → Actions →
-   New repository secret → name it `CLOUDFLARE_API_TOKEN`, paste the
-   token → Add secret
-
-The workflow lives at `.github/workflows/deploy-worker.yml`.
+(A `CLOUDFLARE_API_TOKEN` GitHub Actions secret may exist from an
+earlier attempt to wire up a redundant GitHub Action for this - safe
+to delete, it's not used for anything.)
 
 ### First-time setup (or to rotate the AI provider key)
 
