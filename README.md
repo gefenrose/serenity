@@ -30,29 +30,45 @@ pulling real entries from local storage.
 
 ## Set up the worker
 
-Uses OpenRouter (openrouter.ai), which gives one key/account access to
-many providers' models, including free-tier options - no card required
-for free models. The worker defaults to a free Gemini model (good Hebrew
-+ reasoning) and automatically falls back to OpenRouter's auto-selecting
-free router if that specific model is ever retired upstream.
+Uses Groq (console.groq.com), which has a genuinely free tier - no card
+required. (An OpenRouter-based setup was tried for better Hebrew quality
+via a free Gemini route, but that specific free model ID stopped being
+live and silently fell through to a random small free model with poor
+Hebrew - reverted back to Groq until a properly-verified alternative is
+in place.)
 
-1. Get a free API key at https://openrouter.ai/keys
-2. `cd worker`
-3. Log in: `npx wrangler login`
-4. Add the key as a secret:
-   `npx wrangler secret put OPENROUTER_API_KEY`
-5. Deploy: `npx wrangler deploy`
-6. Copy the resulting `*.workers.dev` URL into `WORKER_URL` near the top of
-   the `<script>` in `index.html`, then commit and push.
+### Ongoing changes: auto-deploy via GitHub Actions
 
-Free-tier model IDs on OpenRouter rotate as providers add/remove free
-hosting - check current options at openrouter.ai/models?max_price=0 and
-update `PRIMARY_MODEL` in `worker/worker.js` if the default one listed
-there has been retired.
+Once set up (below), any push to `main` that touches `worker/**`
+deploys automatically - no need to open Cloudflare's editor at all.
 
-The worker translates OpenRouter's response back into the same shape the
-frontend expects, so `index.html` doesn't need to know which model is
-behind it - swapping providers again later only means editing `worker.js`.
+1. Cloudflare dashboard → profile icon (top right) → My Profile → API
+   Tokens → Create Token → use the **Edit Cloudflare Workers** template
+   → Continue to summary → Create Token → copy it
+2. This repo on GitHub → Settings → Secrets and variables → Actions →
+   New repository secret → name it `CLOUDFLARE_API_TOKEN`, paste the
+   token → Add secret
+
+The workflow lives at `.github/workflows/deploy-worker.yml`.
+
+### First-time setup (or to rotate the AI provider key)
+
+The `GROQ_API_KEY` secret on the Worker itself is separate from the
+deploy token above, and isn't something a GitHub Action needs to
+touch - set it once via the Cloudflare dashboard:
+
+1. Get a free API key at https://console.groq.com/keys
+2. Cloudflare dashboard → Workers & Pages → serenity-api → Settings →
+   Variables and Secrets → Add → type **Secret**, name `GROQ_API_KEY`,
+   paste the value → Deploy
+
+(Or via CLI: `cd worker`, `npx wrangler login`, then
+`npx wrangler secret put GROQ_API_KEY`.)
+
+The worker translates the provider's response back into the same shape
+the frontend expects, so `index.html` doesn't need to know which model
+is behind it - swapping providers again later only means editing
+`worker.js` and pushing (which now deploys itself).
 
 The worker only allows requests from a small allowlist of origins (see
 `ALLOWED_ORIGINS` in `worker/worker.js`): the GitHub Pages PWA
