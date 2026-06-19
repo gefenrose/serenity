@@ -706,6 +706,9 @@ The app provides the user's journal entries as structured data. Organize and lig
   });
 
   const home = document.getElementById('home');
+  // Note: .screen.chat (this element) is the actual overflow-y:auto scroll
+  // container - .chat-body inside it is just a flex column with no overflow
+  // of its own, so auto-scroll-to-bottom must target this, not chatBody.
   const chat = document.getElementById('chat');
   const historyScreen = document.getElementById('history');
   const chatTitle = document.getElementById('chatTitle');
@@ -765,7 +768,7 @@ The app provides the user's journal entries as structured data. Organize and lig
     bubble.className = 'bubble' + (role === 'user' ? ' user' : '');
     bubble.textContent = text;
     chatBody.appendChild(bubble);
-    chatBody.scrollTop = chatBody.scrollHeight;
+    chat.scrollTop = chat.scrollHeight;
     return bubble;
   }
 
@@ -774,7 +777,7 @@ The app provides the user's journal entries as structured data. Organize and lig
     bubble.className = 'bubble thinking';
     bubble.innerHTML = '<span></span><span></span><span></span>';
     chatBody.appendChild(bubble);
-    chatBody.scrollTop = chatBody.scrollHeight;
+    chat.scrollTop = chat.scrollHeight;
     return bubble;
   }
 
@@ -847,7 +850,7 @@ The app provides the user's journal entries as structured data. Organize and lig
     a.className = 'export-link';
     a.textContent = 'הורד את כל הזכרונות כקובץ טקסט';
     chatBody.appendChild(a);
-    chatBody.scrollTop = chatBody.scrollHeight;
+    chat.scrollTop = chat.scrollHeight;
   }
 
   function openWeekly() {
