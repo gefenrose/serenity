@@ -53,6 +53,90 @@
     padding: 32px 26px;
     overflow-y: auto;
   }
+
+  /* ---- desktop layout ---- */
+  @media (min-width: 769px) {
+    body { align-items: stretch; padding: 0; background: #F4F7FA; }
+    .app {
+      max-width: none;
+      width: 100%;
+      height: 100vh;
+      border-radius: 0;
+      box-shadow: none;
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      grid-template-rows: 1fr;
+    }
+
+    /* sidebar panel always visible on desktop */
+    .screen.home {
+      position: static !important;
+      display: flex !important;
+      flex-direction: column;
+      grid-column: 1;
+      grid-row: 1;
+      border-left: 1px solid var(--line);
+      overflow-y: auto;
+      padding: 40px 28px;
+      background: var(--paper);
+    }
+
+    /* main content area: profile / chat / history */
+    .screen.profile,
+    .screen.chat,
+    .screen.history {
+      position: static !important;
+      grid-column: 2;
+      grid-row: 1;
+      background: #F4F7FA;
+      padding: 40px 48px;
+      overflow-y: auto;
+    }
+
+    /* when a non-home screen is hidden via style.display=none it still takes
+       up grid space; hide it properly with grid-column manipulation instead */
+    .screen.profile[style*="display: none"],
+    .screen.chat[style*="display: none"],
+    .screen.history[style*="display: none"] {
+      display: none !important;
+    }
+
+    /* profile: don't try to vertically center in the grid cell */
+    .screen.profile { justify-content: flex-start; padding-top: 80px; }
+
+    /* chat fills available height */
+    .screen.chat { display: flex; flex-direction: column; }
+    .screen.history { display: flex; flex-direction: column; }
+
+    /* empty state placeholder when no right panel is active */
+    .desktop-placeholder {
+      grid-column: 2;
+      grid-row: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 15px;
+      background: #F4F7FA;
+    }
+
+    /* hide back buttons on desktop — sidebar is always visible */
+    .screen.chat .back,
+    .screen.history .back {
+      display: none;
+    }
+
+    /* desktop chat: header no longer needs border-bottom gap from back btn */
+    .screen.chat .chat-header {
+      padding-bottom: 20px;
+    }
+
+    /* chat body scrolls inside the flex column */
+    .screen.chat .chat-body {
+      overflow-y: auto;
+    }
+  }
+
   @media (max-width: 480px) {
     body { padding: 0; background: var(--paper); }
     .app {
@@ -457,9 +541,11 @@
       <div class="history-list" id="historyList"></div>
     </div>
 
+    <div class="desktop-placeholder" id="desktopPlaceholder">בחר/י פעולה מהתפריט</div>
   </div>
 
 <script>
+  const isDesktop = () => window.innerWidth >= 769;
   const STORAGE_PROFILE = 'serenity:profile';
   const STORAGE_ENTRIES = 'serenity:entries';
 
@@ -735,32 +821,48 @@ The app provides the user's journal entries as structured data. Organize and lig
       : greetingText(hour);
   }
 
+  const placeholder = document.getElementById('desktopPlaceholder');
+
+  function showRightPanel(el, displayType) {
+    [profileScreen, chat, historyScreen, placeholder].forEach(p => { p.style.display = 'none'; });
+    el.style.display = displayType;
+  }
+
   continueBtn.addEventListener('click', () => {
     profile.name = nameInput.value.trim();
     profile.onboarded = true;
     saveProfile();
     updateGreeting();
-    profileScreen.classList.add('fade-out');
-    setTimeout(() => {
+    if (isDesktop()) {
       profileScreen.style.display = 'none';
-      profileScreen.classList.remove('fade-out');
-      home.style.display = 'block';
-      home.classList.add('fade-in');
-      setTimeout(() => home.classList.remove('fade-in'), 350);
-    }, 200);
+      showRightPanel(placeholder, 'flex');
+    } else {
+      profileScreen.classList.add('fade-out');
+      setTimeout(() => {
+        profileScreen.style.display = 'none';
+        profileScreen.classList.remove('fade-out');
+        home.style.display = 'block';
+        home.classList.add('fade-in');
+        setTimeout(() => home.classList.remove('fade-in'), 350);
+      }, 200);
+    }
   });
 
   editProfileBtn.addEventListener('click', () => {
     nameInput.value = profile.name;
     genderBtns.forEach(b => b.classList.toggle('active', b.dataset.gender === profile.gender));
-    home.classList.add('fade-out');
-    setTimeout(() => {
-      home.style.display = 'none';
-      home.classList.remove('fade-out');
-      profileScreen.style.display = 'flex';
-      profileScreen.classList.add('fade-in');
-      setTimeout(() => profileScreen.classList.remove('fade-in'), 350);
-    }, 200);
+    if (isDesktop()) {
+      showRightPanel(profileScreen, 'flex');
+    } else {
+      home.classList.add('fade-out');
+      setTimeout(() => {
+        home.style.display = 'none';
+        home.classList.remove('fade-out');
+        profileScreen.style.display = 'flex';
+        profileScreen.classList.add('fade-in');
+        setTimeout(() => profileScreen.classList.remove('fade-in'), 350);
+      }, 200);
+    }
   });
 
   function appendBubble(text, role) {
@@ -878,65 +980,90 @@ The app provides the user's journal entries as structured data. Organize and lig
     appendDownloadLink(all);
   }
 
-  document.querySelectorAll('[data-flow]').forEach(el => {
-    el.addEventListener('click', () => {
-      const key = el.dataset.flow;
-      const f = flows[key];
-      chatTitle.textContent = f.title;
-      chatBody.innerHTML = '';
-      conversation = [];
-      currentEntry = null;
-      chatReturnTo = 'home';
+  function openFlowKey(key) {
+    const f = flows[key];
+    chatTitle.textContent = f.title;
+    chatBody.innerHTML = '';
+    conversation = [];
+    currentEntry = null;
+    chatReturnTo = 'home';
 
-      home.classList.add('fade-out');
-      setTimeout(() => {
-        try {
+    const doOpen = () => {
+      try {
+        if (isDesktop()) {
+          showRightPanel(chat, 'flex');
+        } else {
           home.style.display = 'none';
           home.classList.remove('fade-out');
           chat.style.display = 'flex';
-          chat.classList.add('warp-in');
-          setTimeout(() => chat.classList.remove('warp-in'), 420);
-          chatInput.placeholder = 'כתוב/כתבי כאן...';
-
-          if (f.special === 'weekly') {
-            openWeekly();
-          } else if (f.special === 'export') {
-            openExport();
-          } else {
-            currentEntry = {
-              id: `${key}-${Date.now()}`,
-              flowKey: key,
-              flowTitle: f.title,
-              date: new Date().toISOString(),
-              messages: []
-            };
-            sendToClaude(`[FLOW: ${f.flowName}]`);
-          }
-        } catch (err) {
-          chat.style.display = 'flex';
-          chatBody.innerHTML = '';
-          appendBubble('שגיאה: ' + err.message, 'assistant');
         }
-      }, 180);
-    });
+        chat.classList.add('warp-in');
+        setTimeout(() => chat.classList.remove('warp-in'), 420);
+        chatInput.placeholder = 'כתוב/כתבי כאן...';
+
+        if (f.special === 'weekly') {
+          openWeekly();
+        } else if (f.special === 'export') {
+          openExport();
+        } else {
+          currentEntry = {
+            id: `${key}-${Date.now()}`,
+            flowKey: key,
+            flowTitle: f.title,
+            date: new Date().toISOString(),
+            messages: []
+          };
+          sendToClaude(`[FLOW: ${f.flowName}]`);
+        }
+      } catch (err) {
+        if (isDesktop()) showRightPanel(chat, 'flex');
+        else chat.style.display = 'flex';
+        chatBody.innerHTML = '';
+        appendBubble('שגיאה: ' + err.message, 'assistant');
+      }
+    };
+
+    if (isDesktop()) {
+      doOpen();
+    } else {
+      home.classList.add('fade-out');
+      setTimeout(doOpen, 180);
+    }
+  }
+
+  document.querySelectorAll('[data-flow]').forEach(el => {
+    el.addEventListener('click', () => openFlowKey(el.dataset.flow));
   });
 
   document.getElementById('backBtn').addEventListener('click', () => {
-    chat.classList.add('warp-out');
-    setTimeout(() => {
-      chat.style.display = 'none';
-      chat.classList.remove('warp-out');
-      if (chatReturnTo === 'history') {
-        historyScreen.style.display = 'flex';
-        historyScreen.classList.add('fade-in');
-        setTimeout(() => historyScreen.classList.remove('fade-in'), 350);
-      } else {
-        home.style.display = 'block';
-        home.classList.add('fade-in');
-        setTimeout(() => home.classList.remove('fade-in'), 350);
-      }
-      chatReturnTo = 'home';
-    }, 300);
+    if (isDesktop()) {
+      chat.classList.add('warp-out');
+      setTimeout(() => {
+        chat.classList.remove('warp-out');
+        if (chatReturnTo === 'history') {
+          showRightPanel(historyScreen, 'flex');
+        } else {
+          showRightPanel(placeholder, 'flex');
+        }
+        chatReturnTo = 'home';
+      }, 300);
+    } else {
+      chat.classList.add('warp-out');
+      setTimeout(() => {
+        chat.style.display = 'none';
+        chat.classList.remove('warp-out');
+        if (chatReturnTo === 'history') {
+          historyScreen.style.display = 'flex';
+          historyScreen.classList.add('fade-in');
+          setTimeout(() => historyScreen.classList.remove('fade-in'), 350);
+        } else {
+          home.style.display = 'block';
+          home.classList.add('fade-in');
+          setTimeout(() => home.classList.remove('fade-in'), 350);
+        }
+        chatReturnTo = 'home';
+      }, 300);
+    }
   });
 
   function renderHistoryList() {
@@ -1012,11 +1139,14 @@ The app provides the user's journal entries as structured data. Organize and lig
     conversation = entry.messages.slice();
     currentEntry = entry;
 
-    historyScreen.classList.add('fade-out');
-    setTimeout(() => {
-      historyScreen.style.display = 'none';
-      historyScreen.classList.remove('fade-out');
-      chat.style.display = 'flex';
+    const doOpen = () => {
+      if (isDesktop()) {
+        showRightPanel(chat, 'flex');
+      } else {
+        historyScreen.style.display = 'none';
+        historyScreen.classList.remove('fade-out');
+        chat.style.display = 'flex';
+      }
       chat.classList.add('warp-in');
       setTimeout(() => chat.classList.remove('warp-in'), 420);
 
@@ -1027,37 +1157,60 @@ The app provides the user's journal entries as structured data. Organize and lig
       chatInput.placeholder = 'כתוב/כתבי כאן...';
       setInputEnabled(true);
       chatInput.focus();
-    }, 180);
+    };
+
+    if (isDesktop()) {
+      doOpen();
+    } else {
+      historyScreen.classList.add('fade-out');
+      setTimeout(doOpen, 180);
+    }
   }
 
   function openHistoryScreen() {
     renderHistoryList();
-    home.classList.add('fade-out');
-    setTimeout(() => {
-      home.style.display = 'none';
-      home.classList.remove('fade-out');
-      historyScreen.style.display = 'flex';
-      historyScreen.classList.add('fade-in');
-      setTimeout(() => historyScreen.classList.remove('fade-in'), 350);
-    }, 180);
+    if (isDesktop()) {
+      showRightPanel(historyScreen, 'flex');
+    } else {
+      home.classList.add('fade-out');
+      setTimeout(() => {
+        home.style.display = 'none';
+        home.classList.remove('fade-out');
+        historyScreen.style.display = 'flex';
+        historyScreen.classList.add('fade-in');
+        setTimeout(() => historyScreen.classList.remove('fade-in'), 350);
+      }, 180);
+    }
   }
 
   document.getElementById('historyBackBtn').addEventListener('click', () => {
-    historyScreen.classList.add('fade-out');
-    setTimeout(() => {
-      historyScreen.style.display = 'none';
-      historyScreen.classList.remove('fade-out');
-      home.style.display = 'block';
-      home.classList.add('fade-in');
-      setTimeout(() => home.classList.remove('fade-in'), 350);
-    }, 200);
+    if (isDesktop()) {
+      showRightPanel(placeholder, 'flex');
+    } else {
+      historyScreen.classList.add('fade-out');
+      setTimeout(() => {
+        historyScreen.style.display = 'none';
+        historyScreen.classList.remove('fade-out');
+        home.style.display = 'block';
+        home.classList.add('fade-in');
+        setTimeout(() => home.classList.remove('fade-in'), 350);
+      }, 200);
+    }
   });
 
   loadProfile();
   if (profile.onboarded) {
     profileScreen.style.display = 'none';
     home.style.display = 'block';
+    if (isDesktop()) {
+      placeholder.style.display = 'flex';
+    }
     updateGreeting();
+  } else if (isDesktop()) {
+    // On desktop onboarding: show profile in right panel, home (sidebar) stays visible
+    home.style.display = 'block';
+    profileScreen.style.display = 'none';
+    showRightPanel(profileScreen, 'flex');
   }
 
   // Service worker is for the GitHub Pages PWA only. In the Capacitor
