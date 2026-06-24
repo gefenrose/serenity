@@ -614,7 +614,7 @@
       <div id="moodDetail" class="mood-detail"></div>
     </div>
 
-    <div class="desktop-placeholder" id="desktopPlaceholder">בחר/י פעולה מהתפריט</div>
+    <div class="desktop-placeholder" id="desktopPlaceholder"></div>
   </div>
 
 <script>
@@ -885,6 +885,11 @@ The app provides this week's mood entries as structured data. Using ONLY that da
   }
 
   const placeholder = document.getElementById('desktopPlaceholder');
+
+  function updatePlaceholder() {
+    const verb = profile.gender === 'm' ? 'בחר' : profile.gender === 'f' ? 'בחרי' : 'בחר/י';
+    placeholder.textContent = `${verb} פעולה מהתפריט`;
+  }
   const moodGraphScreen = document.getElementById('moodGraph');
 
   function showRightPanel(el, displayType) {
@@ -897,6 +902,7 @@ The app provides this week's mood entries as structured data. Using ONLY that da
     profile.onboarded = true;
     saveProfile();
     updateGreeting();
+    updatePlaceholder();
     if (isDesktop()) {
       profileScreen.style.display = 'none';
       showRightPanel(placeholder, 'flex');
@@ -1409,6 +1415,7 @@ The app provides this week's mood entries as structured data. Using ONLY that da
   });
 
   loadProfile();
+  updatePlaceholder();
   if (profile.onboarded) {
     profileScreen.style.display = 'none';
     home.style.display = 'block';
