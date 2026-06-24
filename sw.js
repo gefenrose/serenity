@@ -1,10 +1,11 @@
-const CACHE_NAME = 'serenity-v1';
+const CACHE_NAME = 'serenity-v2';
 const APP_SHELL = [
   './',
   './index.html',
   './manifest.json',
   './icons/icon-192.png',
-  './icons/icon-512.png'
+  './icons/icon-512.png',
+  './images/header-ripple.jpg'
 ];
 
 self.addEventListener('install', (event) => {

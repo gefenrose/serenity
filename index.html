@@ -550,6 +550,86 @@
     .screen.mood-graph .back { display: none; }
   }
 
+  /* ---- splash screen ---- */
+  #splash {
+    position: fixed;
+    inset: 0;
+    background: url('images/header-ripple.jpg') center / cover no-repeat;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    transition: opacity 0.7s ease;
+  }
+  #splash::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(25, 45, 65, 0.38);
+  }
+  #splash.hiding { opacity: 0; pointer-events: none; }
+  .splash-inner {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    color: #fff;
+  }
+  .splash-title {
+    font-size: 38px;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.22);
+  }
+  .splash-sub {
+    font-size: 14px;
+    margin-top: 10px;
+    opacity: 0.75;
+    letter-spacing: 0.02em;
+  }
+  .splash-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.8);
+    margin: 28px auto 0;
+    animation: breathe 2s ease-in-out infinite;
+  }
+
+  /* ---- install banner ---- */
+  .install-banner {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--sage-tint);
+    border: 1px solid var(--sage);
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin-top: 16px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .install-banner.visible { display: flex; }
+  .install-banner-text { flex: 1; line-height: 1.5; }
+  .install-banner button {
+    background: var(--sage);
+    border: none;
+    border-radius: 20px;
+    font-family: inherit;
+    font-size: 13px;
+    color: #fff;
+    padding: 8px 16px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .install-banner .install-dismiss {
+    background: none;
+    color: var(--muted);
+    padding: 4px;
+    font-size: 18px;
+    line-height: 1;
+  }
+
   /* ---- inline confirm dialog ---- */
   .confirm-overlay {
     position: fixed;
@@ -582,6 +662,14 @@
 </style>
 </head>
 <body>
+  <div id="splash">
+    <div class="splash-inner">
+      <div class="splash-title">יומן רגוע</div>
+      <div class="splash-sub">מקום שקט לכתיבה</div>
+      <div class="splash-dot"></div>
+    </div>
+  </div>
+
   <div class="app">
 
     <div class="screen profile" id="profile">
@@ -615,6 +703,11 @@
       <div class="backup-row" style="margin-top: 10px;">
         <button onclick="exportToDrive()" class="action-btn">☁ גיבוי לדרייב</button>
         <button onclick="importFromDrive()" class="action-btn">☁ שחזור מדרייב</button>
+      </div>
+      <div class="install-banner" id="installBanner">
+        <div class="install-banner-text" id="installBannerText"></div>
+        <button id="installBtn" onclick="installPWA()">הוסף</button>
+        <button class="install-dismiss" onclick="dismissInstall()" title="סגור">×</button>
       </div>
     </div>
 
@@ -1460,6 +1553,55 @@ The app provides this week's mood entries as structured data. Using ONLY that da
     home.style.display = 'block';
     profileScreen.style.display = 'none';
     showRightPanel(profileScreen, 'flex');
+  }
+
+  /* ---- splash ---- */
+  (function() {
+    const splash = document.getElementById('splash');
+    setTimeout(() => {
+      splash.classList.add('hiding');
+      splash.addEventListener('transitionend', () => splash.remove(), { once: true });
+    }, 1300);
+  })();
+
+  /* ---- PWA install ---- */
+  let _installPrompt = null;
+  const installBanner = document.getElementById('installBanner');
+  const installBannerText = document.getElementById('installBannerText');
+
+  function dismissInstall() {
+    installBanner.classList.remove('visible');
+    sessionStorage.setItem('installDismissed', '1');
+  }
+
+  async function installPWA() {
+    if (!_installPrompt) return;
+    _installPrompt.prompt();
+    const { outcome } = await _installPrompt.userChoice;
+    _installPrompt = null;
+    if (outcome === 'accepted') installBanner.classList.remove('visible');
+  }
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    _installPrompt = e;
+    if (sessionStorage.getItem('installDismissed')) return;
+    installBannerText.textContent = 'הוסף את האפליקציה למסך הבית לגישה מהירה';
+    installBanner.classList.add('visible');
+  });
+
+  window.addEventListener('appinstalled', () => {
+    installBanner.classList.remove('visible');
+    _installPrompt = null;
+  });
+
+  // iOS: no beforeinstallprompt — show manual instructions
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (isIOS && !isInStandalone && !sessionStorage.getItem('installDismissed')) {
+    installBannerText.innerHTML = 'להוספה למסך הבית: לחץ/י על <strong>שתף ←</strong> ואז <strong>"הוסף למסך הבית"</strong>';
+    document.getElementById('installBtn').style.display = 'none';
+    installBanner.classList.add('visible');
   }
 
   const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
