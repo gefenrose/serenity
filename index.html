@@ -155,16 +155,42 @@
   }
 
   /* ---- home screen ---- */
+  .home-header {
+    margin: -32px -26px 24px;
+    padding: 36px 26px 28px;
+    background: url('images/header-ripple.jpg') center center / cover no-repeat;
+    position: relative;
+  }
+  .home-header::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(30, 50, 70, 0.28) 0%,
+      rgba(30, 50, 70, 0.18) 60%,
+      rgba(255,255,255,0.55) 100%
+    );
+    pointer-events: none;
+  }
+  .home-header > * { position: relative; z-index: 1; }
   .greeting {
     font-weight: 500;
     font-size: 26px;
     letter-spacing: -0.01em;
     margin-bottom: 4px;
+    color: #ffffff;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.25);
   }
   .date {
     font-size: 13px;
-    color: var(--muted);
+    color: rgba(255,255,255,0.88);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.2);
   }
+  .edit-profile {
+    color: rgba(255,255,255,0.72) !important;
+  }
+  .edit-profile:hover { color: #ffffff !important; }
   .pulse {
     width: 8px;
     height: 8px;
@@ -236,13 +262,11 @@
     border: none;
     font-family: inherit;
     font-size: 12px;
-    color: var(--muted);
     padding: 0;
     margin-top: 6px;
     cursor: pointer;
     text-align: right;
   }
-  .edit-profile:hover { color: var(--sage); }
   .backup-row {
     margin-top: 28px;
     display: flex;
@@ -573,9 +597,11 @@
     </div>
 
     <div class="screen home" id="home">
-      <div class="greeting" id="greeting">ערב טוב</div>
-      <div class="date" id="dateLine"></div>
-      <button class="edit-profile" id="editProfile">שינוי פרטים</button>
+      <div class="home-header">
+        <div class="greeting" id="greeting">ערב טוב</div>
+        <div class="date" id="dateLine"></div>
+        <button class="edit-profile" id="editProfile">שינוי פרטים</button>
+      </div>
       <button class="distress" data-flow="distress">יש משהו שמעיק? אפשר לדבר על זה כאן</button>
       <div class="pulse"></div>
       <div class="flow-list" id="flowList"></div>
