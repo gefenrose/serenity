@@ -24,11 +24,21 @@
     --line: #EDF1F5;
     --sage: #5B9BD5;
     --sage-tint: rgba(91,155,213,0.08);
+    --bg: #F4F7FA;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [data-theme="dark"] {
+    --paper: #1E2330;
+    --ink: #DCE3EC;
+    --muted: #6B7886;
+    --line: #2C3347;
+    --sage: #6AAEE0;
+    --sage-tint: rgba(91,155,213,0.13);
+    --bg: #141924;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease; }
   html, body {
     height: 100%;
-    background: #F4F7FA;
+    background: var(--bg);
     font-family: 'Rubik', sans-serif;
     color: var(--ink);
   }
@@ -59,7 +69,7 @@
 
   /* ---- desktop layout ---- */
   @media (min-width: 769px) {
-    body { align-items: stretch; padding: 0; background: #F4F7FA; }
+    body { align-items: stretch; padding: 0; background: var(--bg); }
     .app {
       max-width: none;
       width: 100%;
@@ -91,7 +101,7 @@
       position: static !important;
       grid-column: 2;
       grid-row: 1;
-      background: #F4F7FA;
+      background: var(--bg);
       padding: 40px 48px;
       overflow-y: auto;
     }
@@ -120,7 +130,7 @@
       justify-content: center;
       color: var(--muted);
       font-size: 15px;
-      background: #F4F7FA;
+      background: var(--bg);
     }
 
     /* hide back buttons on desktop — sidebar is always visible */
@@ -544,12 +554,154 @@
       position: static !important;
       grid-column: 2;
       grid-row: 1;
-      background: #F4F7FA;
+      background: var(--bg);
       padding: 40px 48px;
       overflow-y: auto;
     }
     .screen.mood-graph[style*="display: none"] { display: none !important; }
     .screen.mood-graph .back { display: none; }
+  }
+
+  /* ---- settings button ---- */
+  .settings-btn {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    z-index: 10;
+    background: rgba(255,255,255,0.22);
+    border: 1px solid rgba(255,255,255,0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    color: #fff;
+    transition: background 0.15s;
+  }
+  .settings-btn:hover { background: rgba(255,255,255,0.35); }
+
+  /* ---- settings modal ---- */
+  .settings-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  .settings-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+  .settings-modal {
+    background: var(--paper);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 24px 36px;
+    width: 100%;
+    max-width: 480px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    direction: rtl;
+  }
+  .settings-overlay.open .settings-modal {
+    transform: translateY(0);
+  }
+  .settings-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    margin: 0 auto 20px;
+  }
+  .settings-title {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: var(--ink);
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 15px;
+    color: var(--ink);
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-section-label {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin: 20px 0 4px;
+  }
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  .settings-grid .action-btn { width: 100%; justify-content: center; }
+
+  /* iOS-style toggle */
+  .toggle {
+    position: relative;
+    width: 44px;
+    height: 26px;
+    flex-shrink: 0;
+  }
+  .toggle input { opacity: 0; width: 0; height: 0; }
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--line);
+    border-radius: 13px;
+    transition: background 0.2s;
+    cursor: pointer;
+  }
+  .toggle input:checked + .toggle-track { background: var(--sage); }
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+  }
+  .toggle input:checked + .toggle-track::after {
+    transform: translateX(-18px);
+  }
+
+  /* ---- install banner (inside settings now) ---- */
+  .install-row {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .install-row.visible { display: flex; }
+  .install-hint {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .install-row .action-btn.primary-btn {
+    background: var(--sage);
+    color: #fff;
+    border-color: var(--sage);
   }
 
   /* ---- splash screen ---- */
@@ -597,40 +749,6 @@
     animation: breathe 2s ease-in-out infinite;
   }
 
-  /* ---- install banner ---- */
-  .install-banner {
-    display: none;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    background: var(--sage-tint);
-    border: 1px solid var(--sage);
-    border-radius: 14px;
-    padding: 12px 16px;
-    margin-top: 16px;
-    font-size: 13px;
-    color: var(--ink);
-  }
-  .install-banner.visible { display: flex; }
-  .install-banner-text { flex: 1; line-height: 1.5; }
-  .install-banner button {
-    background: var(--sage);
-    border: none;
-    border-radius: 20px;
-    font-family: inherit;
-    font-size: 13px;
-    color: #fff;
-    padding: 8px 16px;
-    cursor: pointer;
-    white-space: nowrap;
-  }
-  .install-banner .install-dismiss {
-    background: none;
-    color: var(--muted);
-    padding: 4px;
-    font-size: 18px;
-    line-height: 1;
-  }
 
   /* ---- inline confirm dialog ---- */
   .confirm-overlay {
@@ -689,6 +807,7 @@
     </div>
 
     <div class="screen home" id="home">
+      <button class="settings-btn" onclick="openSettings()" title="הגדרות">⚙︎</button>
       <div class="home-header">
         <div class="greeting" id="greeting">ערב טוב</div>
         <div class="date" id="dateLine"></div>
@@ -697,20 +816,7 @@
       <button class="distress" data-flow="distress">יש משהו שמעיק? אפשר לדבר על זה כאן</button>
       <div class="pulse"></div>
       <div class="flow-list" id="flowList"></div>
-      <div class="backup-row">
-        <button onclick="exportData()" class="action-btn">ייצוא גיבוי</button>
-        <button onclick="document.getElementById('importFile').click()" class="action-btn">ייבוא גיבוי</button>
-        <input type="file" id="importFile" accept="application/json" style="display: none;" onchange="importData(event)">
-      </div>
-      <div class="backup-row" style="margin-top: 10px;">
-        <button onclick="exportToDrive()" class="action-btn">☁ גיבוי לדרייב</button>
-        <button onclick="importFromDrive()" class="action-btn">☁ שחזור מדרייב</button>
-      </div>
-      <div class="install-banner" id="installBanner">
-        <div class="install-banner-text" id="installBannerText"></div>
-        <button id="installBtn" onclick="installPWA()">הוסף</button>
-        <button class="install-dismiss" onclick="dismissInstall()" title="סגור">×</button>
-      </div>
+      <input type="file" id="importFile" accept="application/json" style="display: none;" onchange="importData(event)">
     </div>
 
     <div class="screen chat" id="chat">
@@ -743,6 +849,37 @@
     </div>
 
     <div class="desktop-placeholder" id="desktopPlaceholder"></div>
+  </div>
+
+  <!-- Settings modal -->
+  <div class="settings-overlay" id="settingsOverlay" onclick="handleSettingsOverlayClick(event)">
+    <div class="settings-modal" id="settingsModal">
+      <div class="settings-handle"></div>
+      <div class="settings-title">הגדרות</div>
+
+      <div class="settings-row">
+        <span>מצב לילה</span>
+        <label class="toggle">
+          <input type="checkbox" id="darkToggle" onchange="toggleDarkMode(this.checked)">
+          <div class="toggle-track"></div>
+        </label>
+      </div>
+
+      <div class="settings-section-label">גיבוי</div>
+      <div class="settings-grid">
+        <button onclick="exportData()" class="action-btn">ייצוא גיבוי</button>
+        <button onclick="document.getElementById('importFile').click()" class="action-btn">ייבוא גיבוי</button>
+        <button onclick="exportToDrive()" class="action-btn">☁ גיבוי לדרייב</button>
+        <button onclick="importFromDrive()" class="action-btn">☁ שחזור מדרייב</button>
+      </div>
+
+      <div class="settings-section-label">התקנה</div>
+      <div class="install-row" id="installRow">
+        <div class="install-hint" id="installHint"></div>
+        <button id="installBtn" class="action-btn primary-btn" onclick="installPWA()" style="display:none">הוסף למסך הבית</button>
+      </div>
+      <div id="installRowFallback" style="font-size:13px; color:var(--muted); display:none">האפליקציה כבר מותקנת.</div>
+    </div>
   </div>
 
 <script>
@@ -1566,44 +1703,69 @@ The app provides this week's mood entries as structured data. Using ONLY that da
     }, 1300);
   })();
 
+  /* ---- dark mode ---- */
+  function applyTheme(dark) {
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    const toggle = document.getElementById('darkToggle');
+    if (toggle) toggle.checked = dark;
+  }
+  function toggleDarkMode(dark) {
+    localStorage.setItem('serenity:theme', dark ? 'dark' : 'light');
+    applyTheme(dark);
+  }
+  (function() {
+    const saved = localStorage.getItem('serenity:theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(saved ? saved === 'dark' : prefersDark);
+  })();
+
+  /* ---- settings modal ---- */
+  const settingsOverlay = document.getElementById('settingsOverlay');
+  function openSettings() {
+    settingsOverlay.classList.add('open');
+    document.getElementById('darkToggle').checked =
+      document.documentElement.getAttribute('data-theme') === 'dark';
+  }
+  function closeSettings() { settingsOverlay.classList.remove('open'); }
+  function handleSettingsOverlayClick(e) {
+    if (e.target === settingsOverlay) closeSettings();
+  }
+
   /* ---- PWA install ---- */
   let _installPrompt = null;
-  const installBanner = document.getElementById('installBanner');
-  const installBannerText = document.getElementById('installBannerText');
-
-  function dismissInstall() {
-    installBanner.classList.remove('visible');
-    sessionStorage.setItem('installDismissed', '1');
-  }
+  const installRow = document.getElementById('installRow');
+  const installHint = document.getElementById('installHint');
+  const installBtn = document.getElementById('installBtn');
 
   async function installPWA() {
     if (!_installPrompt) return;
     _installPrompt.prompt();
     const { outcome } = await _installPrompt.userChoice;
     _installPrompt = null;
-    if (outcome === 'accepted') installBanner.classList.remove('visible');
+    if (outcome === 'accepted') { installRow.classList.remove('visible'); installBtn.style.display = 'none'; }
   }
 
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     _installPrompt = e;
-    if (sessionStorage.getItem('installDismissed')) return;
-    installBannerText.textContent = 'הוסף את האפליקציה למסך הבית לגישה מהירה';
-    installBanner.classList.add('visible');
+    installHint.textContent = 'הוסף את האפליקציה למסך הבית לגישה מהירה';
+    installBtn.style.display = '';
+    installRow.classList.add('visible');
   });
 
   window.addEventListener('appinstalled', () => {
-    installBanner.classList.remove('visible');
     _installPrompt = null;
+    installRow.classList.remove('visible');
+    document.getElementById('installRowFallback').style.display = '';
   });
 
-  // iOS: no beforeinstallprompt — show manual instructions
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-  if (isIOS && !isInStandalone && !sessionStorage.getItem('installDismissed')) {
-    installBannerText.innerHTML = 'להוספה למסך הבית: לחץ/י על <strong>שתף ←</strong> ואז <strong>"הוסף למסך הבית"</strong>';
-    document.getElementById('installBtn').style.display = 'none';
-    installBanner.classList.add('visible');
+  if (isIOS && !isInStandalone) {
+    installHint.innerHTML = 'להוספה למסך הבית: לחץ/י על <strong>שתף</strong> ← ואז <strong>"הוסף למסך הבית"</strong>';
+    installRow.classList.add('visible');
+  } else if (isInStandalone) {
+    document.getElementById('installRowFallback').style.display = '';
   }
 
   const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
