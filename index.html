@@ -522,6 +522,36 @@
     .screen.mood-graph[style*="display: none"] { display: none !important; }
     .screen.mood-graph .back { display: none; }
   }
+
+  /* ---- inline confirm dialog ---- */
+  .confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .confirm-box {
+    background: var(--paper);
+    border-radius: 16px;
+    padding: 24px 28px;
+    max-width: 300px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    text-align: center;
+  }
+  .confirm-box p { font-size: 15px; line-height: 1.6; margin-bottom: 20px; color: var(--ink); }
+  .confirm-actions { display: flex; gap: 10px; justify-content: center; }
+  .confirm-cancel {
+    flex: 1; background: none; border: 1px solid var(--line); border-radius: 20px;
+    font-family: inherit; font-size: 14px; color: var(--muted); padding: 10px; cursor: pointer;
+  }
+  .confirm-ok {
+    flex: 1; background: #C0524A; border: none; border-radius: 20px;
+    font-family: inherit; font-size: 14px; color: #fff; padding: 10px; cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -1286,10 +1316,28 @@ The app provides this week's mood entries as structured data. Using ONLY that da
     });
   }
 
+  function confirmDialog(message, onConfirm) {
+    const overlay = document.createElement('div');
+    overlay.className = 'confirm-overlay';
+    overlay.innerHTML = `
+      <div class="confirm-box">
+        <p>${message}</p>
+        <div class="confirm-actions">
+          <button class="confirm-cancel">ביטול</button>
+          <button class="confirm-ok">מחיקה</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('.confirm-cancel').addEventListener('click', () => overlay.remove());
+    overlay.querySelector('.confirm-ok').addEventListener('click', () => { overlay.remove(); onConfirm(); });
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+
   function deleteEntry(id) {
-    if (!confirm('למחוק את הרשומה הזו? הפעולה לא הפיכה.')) return;
-    saveEntries(loadEntries().filter(e => e.id !== id));
-    renderHistoryList();
+    confirmDialog('למחוק את הרשומה הזו? הפעולה לא הפיכה.', () => {
+      saveEntries(loadEntries().filter(e => e.id !== id));
+      renderHistoryList();
+    });
   }
 
   function openHistoryEntry(entry) {
