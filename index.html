@@ -1054,7 +1054,8 @@ The app provides this week's mood entries as structured data. Using ONLY that da
     detail.innerHTML = '';
 
     if (points.length === 0) {
-      wrap.innerHTML = '<div class="mood-empty">עדיין אין רשומות מצב רוח.<br>נסה/י את ״מצב רוח״ כמה פעמים ותוצאות יופיעו כאן.</div>';
+      const tryVerb = profile.gender === 'm' ? 'נסה' : profile.gender === 'f' ? 'נסי' : 'נסה/י';
+      wrap.innerHTML = `<div class="mood-empty">עדיין אין רשומות מצב רוח.<br>${tryVerb} את ״מצב רוח״ כמה פעמים ותוצאות יופיעו כאן.</div>`;
       return;
     }
 
