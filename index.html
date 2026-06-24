@@ -55,6 +55,8 @@
     overflow-y: auto;
   }
 
+  .desktop-placeholder { display: none; }
+
   /* ---- desktop layout ---- */
   @media (min-width: 769px) {
     body { align-items: stretch; padding: 0; background: #F4F7FA; }
@@ -113,7 +115,7 @@
     .desktop-placeholder {
       grid-column: 2;
       grid-row: 1;
-      display: flex;
+      display: none;
       align-items: center;
       justify-content: center;
       color: var(--muted);
