@@ -226,7 +226,7 @@
     font-family: inherit;
     font-size: 14px;
     color: var(--sage);
-    padding: 28px 6px 4px;
+    padding: 16px 6px;
     cursor: pointer;
   }
   .distress:hover { text-decoration: underline; }
@@ -511,9 +511,9 @@
       <div class="greeting" id="greeting">ערב טוב</div>
       <div class="date" id="dateLine"></div>
       <button class="edit-profile" id="editProfile">שינוי פרטים</button>
+      <button class="distress" data-flow="distress">יש משהו שמעיק? אפשר לדבר על זה כאן</button>
       <div class="pulse"></div>
       <div class="flow-list" id="flowList"></div>
-      <button class="distress" data-flow="distress">יש משהו שמעיק? אפשר לדבר על זה כאן</button>
       <div class="backup-row">
         <button onclick="exportData()" class="action-btn">ייצוא גיבוי</button>
         <button onclick="document.getElementById('importFile').click()" class="action-btn">ייבוא גיבוי</button>
