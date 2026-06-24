@@ -15,6 +15,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async></script>
 <style>
   :root {
     --paper: #FFFFFF;
@@ -610,6 +611,10 @@
         <button onclick="exportData()" class="action-btn">ייצוא גיבוי</button>
         <button onclick="document.getElementById('importFile').click()" class="action-btn">ייבוא גיבוי</button>
         <input type="file" id="importFile" accept="application/json" style="display: none;" onchange="importData(event)">
+      </div>
+      <div class="backup-row" style="margin-top: 10px;">
+        <button onclick="exportToDrive()" class="action-btn">☁ גיבוי לדרייב</button>
+        <button onclick="importFromDrive()" class="action-btn">☁ שחזור מדרייב</button>
       </div>
     </div>
 
@@ -1461,6 +1466,94 @@ The app provides this week's mood entries as structured data. Using ONLY that da
   if ('serviceWorker' in navigator && !isNative) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js');
+    });
+  }
+
+  /* ---- Google Drive backup ---- */
+  const GDRIVE_CLIENT_ID = '304866526526-qf01ac3u983ug5cr3d2t35efdqr5ptfu.apps.googleusercontent.com';
+  const GDRIVE_FILE_NAME = 'serenity_backup.json';
+  let _driveTokenClient = null;
+  let _driveToken = null;
+  let _driveAction = null;
+
+  function _initDriveClient() {
+    if (_driveTokenClient || !window.google?.accounts?.oauth2) return;
+    _driveTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE_CLIENT_ID,
+      scope: 'https://www.googleapis.com/auth/drive.file',
+      callback: async (resp) => {
+        if (resp.error) { alert('שגיאה בהתחברות לגוגל.'); return; }
+        _driveToken = resp.access_token;
+        if (_driveAction) { const fn = _driveAction; _driveAction = null; await fn(); }
+      }
+    });
+  }
+
+  async function _withDriveToken(action) {
+    _initDriveClient();
+    if (!_driveTokenClient) { alert('ספריית גוגל עדיין נטענת. נסה/י שוב בעוד שנייה.'); return; }
+    _driveAction = action;
+    if (_driveToken) { const fn = _driveAction; _driveAction = null; await fn(); return; }
+    _driveTokenClient.requestAccessToken({ prompt: '' });
+  }
+
+  async function _driveRequest(url, opts) {
+    const resp = await fetch(url, {
+      ...opts,
+      headers: { Authorization: `Bearer ${_driveToken}`, ...(opts?.headers || {}) }
+    });
+    if (resp.status === 401) { _driveToken = null; }
+    return resp;
+  }
+
+  async function _findDriveFile() {
+    const q = encodeURIComponent(`name='${GDRIVE_FILE_NAME}' and trashed=false`);
+    const r = await _driveRequest(
+      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,modifiedTime)&orderBy=modifiedTime+desc`
+    );
+    const { files } = await r.json();
+    return files?.[0]?.id || null;
+  }
+
+  async function exportToDrive() {
+    await _withDriveToken(async () => {
+      const data = {};
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        data[key] = localStorage.getItem(key);
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const meta = { name: GDRIVE_FILE_NAME, mimeType: 'application/json' };
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+      form.append('file', blob);
+
+      const fileId = await _findDriveFile();
+      if (fileId) {
+        await _driveRequest(
+          `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
+          { method: 'PATCH', body: form }
+        );
+      } else {
+        await _driveRequest(
+          'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+          { method: 'POST', body: form }
+        );
+      }
+      alert('הגיבוי נשמר בגוגל דרייב.');
+    });
+  }
+
+  async function importFromDrive() {
+    await _withDriveToken(async () => {
+      const fileId = await _findDriveFile();
+      if (!fileId) { alert('לא נמצא קובץ גיבוי בגוגל דרייב.'); return; }
+      const r = await _driveRequest(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`
+      );
+      const data = await r.json();
+      Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
+      window.location.reload();
     });
   }
 
