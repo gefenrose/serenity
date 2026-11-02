@@ -608,6 +608,10 @@
     padding: 20px 24px 36px;
     width: 100%;
     max-width: 480px;
+    max-height: calc(100vh - 20px);
+    max-height: calc(100dvh - 20px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     transform: translateY(100%);
     transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
     direction: rtl;
@@ -651,6 +655,19 @@
     margin-top: 10px;
   }
   .settings-grid .action-btn { width: 100%; justify-content: center; }
+  .api-key-settings { margin: 10px 0 16px; }
+  .api-key-label { display: block; font-size: 14px; color: var(--ink); margin-bottom: 8px; }
+  .api-key-input {
+    box-sizing: border-box; width: 100%; padding: 12px; direction: ltr; text-align: left;
+    font: inherit; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; outline-offset: 2px;
+  }
+  .api-key-hint, .api-key-status { font-size: 12px; line-height: 1.7; color: var(--muted); margin-top: 8px; }
+  .api-key-remember { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: var(--ink); }
+  .api-key-remember input { accent-color: var(--sage); width: 17px; height: 17px; }
+  .api-key-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .api-key-actions .action-btn { flex: 1 1 100px; justify-content: center; }
+  .api-key-status { min-height: 20px; }
 
   /* iOS-style toggle */
   .toggle {
@@ -865,6 +882,20 @@
         </label>
       </div>
 
+      <div class="settings-section-label">חיבור לבינה מלאכותית · Groq</div>
+      <div class="api-key-settings">
+        <label class="api-key-label" for="groqApiKeyInput">מפתח API אישי של Groq</label>
+        <input class="api-key-input" id="groqApiKeyInput" type="password" placeholder="gsk_..." autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="groqKeyHint">
+        <div class="api-key-hint" id="groqKeyHint">המפתח נשלח ישירות ל-Groq. ברירת המחדל היא שמירה זמנית להפעלה הנוכחית. אין לשתף את המפתח.</div>
+        <label class="api-key-remember"><input type="checkbox" id="rememberGroqKey"> לזכור את המפתח במכשיר (פחות בטוח)</label>
+        <div class="api-key-actions">
+          <button type="button" class="action-btn" onclick="saveGroqApiKey()">שמירת מפתח</button>
+          <button type="button" class="action-btn" id="testGroqKeyBtn" onclick="testGroqApiKey()">בדיקת חיבור</button>
+          <button type="button" class="action-btn" onclick="removeGroqApiKey()">מחיקת מפתח</button>
+        </div>
+        <div class="api-key-status" id="groqKeyStatus" role="status" aria-live="polite"></div>
+      </div>
+
       <div class="settings-section-label">גיבוי</div>
       <div class="settings-grid">
         <button onclick="exportData()" class="action-btn">ייצוא גיבוי</button>
@@ -942,6 +973,7 @@
     const data = {};
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
+      if (key === GROQ_KEY_STORAGE) continue;
       data[key] = localStorage.getItem(key);
     }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -960,7 +992,7 @@
     reader.onload = (e) => {
       try {
         const data = JSON.parse(e.target.result);
-        Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
+        Object.keys(data).filter(key => key !== GROQ_KEY_STORAGE).forEach(key => localStorage.setItem(key, data[key]));
         window.location.reload();
       } catch {
         alert('הקובץ לא תקין.');
@@ -969,7 +1001,126 @@
     reader.readAsText(file);
   }
 
-  const WORKER_URL = 'https://serenity-api.gefenrose.workers.dev';
+  // Browser-only Groq API connection. A server-side secret is more secure.
+  const GROQ_API_URL = 'https://api.groq.com/openai/v1';
+  const GROQ_KEY_STORAGE = 'serenity:groq-api-key';
+  const GROQ_PRIMARY_MODEL = 'openai/gpt-oss-120b';
+  const GROQ_FALLBACK_MODEL = 'openai/gpt-oss-20b';
+  let pendingGroqRequest = null;
+
+  function getGroqApiKey() {
+    try {
+      return sessionStorage.getItem(GROQ_KEY_STORAGE) ||
+        localStorage.getItem(GROQ_KEY_STORAGE) || '';
+    } catch {
+      return '';
+    }
+  }
+
+  function setGroqKeyStatus(message) {
+    document.getElementById('groqKeyStatus').textContent = message;
+  }
+
+  function refreshGroqKeySettings() {
+    const persistent = !!localStorage.getItem(GROQ_KEY_STORAGE);
+    const temporary = !!sessionStorage.getItem(GROQ_KEY_STORAGE);
+    document.getElementById('rememberGroqKey').checked = persistent;
+    setGroqKeyStatus(persistent
+      ? 'מפתח שמור במכשיר. אפשר למחוק אותו בכל עת.'
+      : temporary
+        ? 'מפתח שמור זמנית להפעלה הנוכחית.'
+        : 'עדיין לא נשמר מפתח. צרי מפתח ב-console.groq.com/keys.');
+  }
+
+  function saveGroqApiKey() {
+    const input = document.getElementById('groqApiKeyInput');
+    const key = input.value.trim();
+    if (!key.startsWith('gsk_') || key.length < 16 || /\s/.test(key)) {
+      setGroqKeyStatus('מפתח Groq צריך להתחיל ב-gsk_. בדקי שהדבקת את המפתח המלא.');
+      return;
+    }
+    try {
+      sessionStorage.removeItem(GROQ_KEY_STORAGE);
+      localStorage.removeItem(GROQ_KEY_STORAGE);
+      if (document.getElementById('rememberGroqKey').checked) {
+        localStorage.setItem(GROQ_KEY_STORAGE, key);
+      } else {
+        sessionStorage.setItem(GROQ_KEY_STORAGE, key);
+      }
+    } catch {
+      setGroqKeyStatus('לא הצלחתי לשמור את המפתח בדפדפן. בדקי את הגדרות האחסון.');
+      return;
+    }
+    input.value = '';
+    refreshGroqKeySettings();
+    if (pendingGroqRequest) {
+      const pending = pendingGroqRequest;
+      pendingGroqRequest = null;
+      closeSettings();
+      sendToGroq(pending.userMessage, { showUserBubble: pending.showUserBubble });
+    }
+  }
+
+  function removeGroqApiKey() {
+    try {
+      sessionStorage.removeItem(GROQ_KEY_STORAGE);
+      localStorage.removeItem(GROQ_KEY_STORAGE);
+      document.getElementById('groqApiKeyInput').value = '';
+      refreshGroqKeySettings();
+      setGroqKeyStatus('המפתח נמחק מהמכשיר.');
+    } catch {
+      setGroqKeyStatus('לא ניתן למחוק את המפתח. בדקי את הרשאות האחסון בדפדפן.');
+    }
+  }
+
+  async function testGroqApiKey() {
+    const key = getGroqApiKey();
+    if (!key) {
+      setGroqKeyStatus('שמרי קודם מפתח Groq כדי לבדוק את החיבור.');
+      return;
+    }
+    const button = document.getElementById('testGroqKeyBtn');
+    button.disabled = true;
+    setGroqKeyStatus('בודקת חיבור ל-Groq...');
+    try {
+      const response = await fetch(GROQ_API_URL + '/models', {
+        headers: { 'Authorization': 'Bearer ' + key }
+      });
+      if (response.status === 401 || response.status === 403) {
+        setGroqKeyStatus('המפתח נדחה על ידי Groq. בדקי שהוא תקין ופעיל.');
+      } else if (response.status === 429) {
+        setGroqKeyStatus('Groq מגבילה כרגע את כמות הבקשות. נסי שוב מאוחר יותר.');
+      } else if (!response.ok) {
+        setGroqKeyStatus('בדיקת החיבור נכשלה (שגיאה ' + response.status + ').');
+      } else {
+        const data = await response.json();
+        const available = Array.isArray(data.data) &&
+          data.data.some(model => model.id === GROQ_PRIMARY_MODEL);
+        setGroqKeyStatus(available
+          ? 'החיבור הצליח! המפתח תקין והמודל הראשי זמין.'
+          : 'המפתח תקין, אבל המודל הראשי לא מופיע ברשימת המודלים הזמינים.');
+      }
+    } catch {
+      setGroqKeyStatus('לא ניתן להגיע ל-Groq. בדקי את האינטרנט או חסימת בקשות בדפדפן.');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function requestGroq(model, messages, apiKey) {
+    return fetch(GROQ_API_URL + '/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify({
+        model, messages, stream: false,
+        reasoning_effort: 'low',
+        max_completion_tokens: 1024
+      })
+    });
+  }
 
   const SYSTEM_PROMPT = `You are a calm, private journaling companion. Respond only in Hebrew, written naturally in right-to-left (RTL) form.
 
@@ -1223,7 +1374,15 @@ The app provides this week's mood entries as structured data. Using ONLY that da
     sendBtn.disabled = !enabled;
   }
 
-  async function sendToClaude(userMessage, { showUserBubble = false } = {}) {
+  async function sendToGroq(userMessage, { showUserBubble = false } = {}) {
+    const key = getGroqApiKey();
+    if (!key) {
+      pendingGroqRequest = { userMessage, showUserBubble };
+      appendBubble('כדי להתחיל לכתוב, צריך להוסיף מפתח Groq בהגדרות.', 'assistant');
+      openSettings();
+      return;
+    }
+
     conversation.push({ role: 'user', content: userMessage });
     if (showUserBubble) appendBubble(userMessage, 'user');
 
@@ -1231,14 +1390,17 @@ The app provides this week's mood entries as structured data. Using ONLY that da
     const thinking = appendThinking();
 
     try {
-      const res = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ system: buildSystemPrompt(), messages: conversation })
-      });
-      if (!res.ok) throw new Error('request failed');
+      const messages = [{ role: 'system', content: buildSystemPrompt() }, ...conversation];
+      let res = await requestGroq(GROQ_PRIMARY_MODEL, messages, key);
+      if ([400, 404, 503].includes(res.status)) {
+        res = await requestGroq(GROQ_FALLBACK_MODEL, messages, key);
+      }
+      if (!res.ok) throw new Error('groq_' + res.status);
       const data = await res.json();
-      const text = (data.content || []).map(block => block.text || '').join('');
+      const text = data.choices?.[0]?.message?.content;
+      if (typeof text !== 'string' || !text.trim()) {
+        throw new Error('empty_response');
+      }
       conversation.push({ role: 'assistant', content: text });
       if (currentEntry) {
         currentEntry.messages = conversation.slice();
@@ -1248,7 +1410,20 @@ The app provides this week's mood entries as structured data. Using ONLY that da
       appendBubble(text, 'assistant');
     } catch (err) {
       thinking.remove();
-      appendBubble('לא הצלחתי להתחבר כרגע. אפשר לנסות שוב בעוד רגע.', 'assistant');
+      const code = err.message || '';
+      let message = 'לא הצלחתי להתחבר ל-Groq. אפשר לנסות שוב.';
+      if (code === 'groq_401' || code === 'groq_403') {
+        message = 'מפתח ה-API נדחה. אפשר לעדכן אותו בהגדרות.';
+      } else if (code === 'groq_429') {
+        message = 'מכסת הבקשות ב-Groq הושגה. נסי שוב מאוחר יותר.';
+      } else if (code === 'empty_response') {
+        message = 'המודל לא החזיר תשובה. נסי לשלוח שוב.';
+      } else if (code.startsWith('groq_')) {
+        message = 'Groq החזירה שגיאה ' + code.slice(5) + '. נסי שוב מאוחר יותר.';
+      } else if (err instanceof TypeError) {
+        message = 'לא ניתן להגיע ל-Groq. בדקי את החיבור לאינטרנט או חסימה בדפדפן.';
+      }
+      appendBubble(message, 'assistant');
     } finally {
       setInputEnabled(true);
       chatInput.focus();
@@ -1266,7 +1441,7 @@ The app provides this week's mood entries as structured data. Using ONLY that da
     if (!text) return;
     chatInput.value = '';
     autoResizeInput();
-    sendToClaude(text, { showUserBubble: true });
+    sendToGroq(text, { showUserBubble: true });
   }
 
   sendBtn.addEventListener('click', handleSend);
@@ -1286,7 +1461,7 @@ The app provides this week's mood entries as structured data. Using ONLY that da
       return;
     }
     const data = recent.map(formatEntry).join('\n\n');
-    sendToClaude(`[FLOW: סיכום שבועי]\n\nנתוני השבוע:\n\n${data}`);
+    sendToGroq(`[FLOW: סיכום שבועי]\n\nנתוני השבוע:\n\n${data}`);
   }
 
   /* ---- mood graph ---- */
@@ -1450,6 +1625,7 @@ The app provides this week's mood entries as structured data. Using ONLY that da
     chatTitle.textContent = f.title;
     chatBody.innerHTML = '';
     conversation = [];
+    pendingGroqRequest = null;
     currentEntry = null;
     chatReturnTo = 'home';
 
@@ -1476,7 +1652,7 @@ The app provides this week's mood entries as structured data. Using ONLY that da
             date: new Date().toISOString(),
             messages: []
           };
-          sendToClaude(`[FLOW: ${f.flowName}]`);
+          sendToGroq(`[FLOW: ${f.flowName}]`);
         }
       } catch (err) {
         if (isDesktop()) showRightPanel(chat, 'flex');
@@ -1725,6 +1901,7 @@ The app provides this week's mood entries as structured data. Using ONLY that da
     settingsOverlay.classList.add('open');
     document.getElementById('darkToggle').checked =
       document.documentElement.getAttribute('data-theme') === 'dark';
+    refreshGroqKeySettings();
   }
   function closeSettings() { settingsOverlay.classList.remove('open'); }
   function handleSettingsOverlayClick(e) {
@@ -1826,6 +2003,7 @@ The app provides this week's mood entries as structured data. Using ONLY that da
       const data = {};
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
+        if (key === GROQ_KEY_STORAGE) continue;
         data[key] = localStorage.getItem(key);
       }
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1858,7 +2036,7 @@ The app provides this week's mood entries as structured data. Using ONLY that da
         `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`
       );
       const data = await r.json();
-      Object.keys(data).forEach(key => localStorage.setItem(key, data[key]));
+      Object.keys(data).filter(key => key !== GROQ_KEY_STORAGE).forEach(key => localStorage.setItem(key, data[key]));
       window.location.reload();
     });
   }
