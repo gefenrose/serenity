@@ -1,116 +1,86 @@
-# serenity
+# Serenity — יומן רגוע
 
-A calm, text-based RTL Hebrew journaling companion - PWA + Capacitor native app.
+A calm, text-based RTL Hebrew journaling companion for the web (PWA) and Capacitor native apps.
 
-## What's here
+## How it works
 
-- `index.html` - the app: onboarding (name + gender), home screen with
-  time-aware flows, and a chat view for each flow
-- `manifest.json` - PWA manifest (installable, standalone, RTL, portrait)
-- `sw.js` - network-first service worker for offline support + auto-update
-  (PWA only - skipped when running as the native app)
-- `icons/` - app icons (192, 512, apple-touch, favicon)
-- `worker/` - Cloudflare Worker that proxies chat requests to OpenRouter
-- `build.js` / `www/` - copies the files above into `www/`, the web root
-  Capacitor expects (generated, not committed)
-- `capacitor.config.json`, `package.json` - Capacitor project config
+- `index.html` — onboarding, journal flows, chat, mood chart, settings and backups
+- `manifest.json` — PWA manifest
+- `sw.js` — network-first PWA service worker for offline access to the app shell
+- `icons/` — app icons
+- `build.js` — prepares the `www/` directory for Capacitor
+- `capacitor.config.json` and `package.json` — native app tooling
 
-## Flows
+### Journal flows
 
-יומן בוקר, סיכום יום, מצב רוח, יומן תודות, סיכום שבועי, ייצוא זכרונות,
-and a quiet distress check-in - all defined in the `flows` object in
-`index.html`.
+יומן בוקר, סיכום יום, מצב רוח, יומן תודות, סיכום שבועי, ייצוא זכרונות, ולחצן מצוקה.
 
-## Status
+Recent journal entries for weekly summaries are read from this device's local storage.
 
-The UI shell, onboarding, and all flows (יומן בוקר, סיכום יום, מצב רוח,
-יומן תודות, סיכום שבועי, ייצוא זכרונות, לחצן מצוקה) are wired up to
-OpenRouter via the worker below, with סיכום שבועי and ייצוא זכרונות
-pulling real entries from local storage.
+## Connect AI directly to Groq (no server required)
 
-## Set up the worker
+Serenity no longer needs a Cloudflare Worker, OpenRouter account, or server environment variables. The app sends its chat requests from the browser directly to the Groq API, using **your own personal Groq API key**.
 
-Uses Groq (console.groq.com), which has a genuinely free tier - no card
-required. (An OpenRouter-based setup was tried for better Hebrew quality
-via a free Gemini route, but that specific free model ID stopped being
-live and silently fell through to a random small free model with poor
-Hebrew - reverted back to Groq until a properly-verified alternative is
-in place.)
+1. Create your personal key at https://console.groq.com/keys.
+2. Open Serenity: https://gefenrose.github.io/serenity/.
+3. Open **הגדרות** (gear icon) → **חיבור לבינה מלאכותית · Groq**.
+4. Paste your key (starts with `gsk_`) and select **שמירת מפתח**.
+5. Select **בדיקת חיבור** to check the key. Start a journaling flow.
 
-### Ongoing changes: deploys automatically already
+Serenity currently uses `openai/gpt-oss-120b` through Groq, with `openai/gpt-oss-20b` as its fallback. The `openai/` prefix is part of Groq's *model identifier*; this setup does **not** use an OpenAI API key.
 
-This repo's Worker is connected to Cloudflare via their native Git
-integration (Workers Builds) - every push to `main` that touches
-`worker/` deploys automatically, visible as a commit status/check on
-GitHub. No separate CI workflow or Cloudflare editor needed for code
-changes.
+### API key security and privacy
 
-(A `CLOUDFLARE_API_TOKEN` GitHub Actions secret may exist from an
-earlier attempt to wire up a redundant GitHub Action for this - safe
-to delete, it's not used for anything.)
+**A direct browser connection is less secure than keeping the key on a trusted server.**
 
-### First-time setup (or to rotate the AI provider key)
+- By default the key is kept in this browser tab's `sessionStorage`, so it is not meant to be permanent. It can survive a refresh, but you may need to enter it again in another tab or session.
+- To keep it across sessions, explicitly enable **לזכור את המפתח במכשיר (פחות בטוח)** before saving. This writes it into browser `localStorage` in readable form. Other scripts running on the same origin, browser extensions or someone with device access may be able to read it.
+- The key is never committed into GitHub source files, and Serenity excludes it from local backup files and Google Drive backups.
+- Clearing browser storage may remove the key. Deleting the key in settings removes the stored copies.
+- Journal messages are sent to **Groq**, an external AI provider, to generate responses. Treat sensitive journal content accordingly.
+- Use a dedicated personal key, monitor usage, and revoke/rotate the key from Groq's dashboard if exposed.
+- Groq's free and paid limits and availability can change.
 
-The `GROQ_API_KEY` secret on the Worker itself is separate from the
-deploy token above, and isn't something a GitHub Action needs to
-touch - set it once via the Cloudflare dashboard:
+### Troubleshooting
 
-1. Get a free API key at https://console.groq.com/keys
-2. Cloudflare dashboard → Workers & Pages → serenity-api → Settings →
-   Variables and Secrets → Add → type **Secret**, name `GROQ_API_KEY`,
-   paste the value → Deploy
+- **מפתח נדחה**: check that the key belongs to Groq, begins with `gsk_` and is active.
+- **מכסת הבקשות הושגה**: wait for your Groq request limit to reset, or consult your Groq account.
+- **לא ניתן להגיע ל-Groq**: check network access and browser privacy/CORS restrictions.
+- **No response**: verify the model is enabled for your Groq account.
 
-(Or via CLI: `cd worker`, `npx wrangler login`, then
-`npx wrangler secret put GROQ_API_KEY`.)
+The connection-test button checks key validity and model listing. It is not a full chat-generation test.
 
-The worker translates the provider's response back into the same shape
-the frontend expects, so `index.html` doesn't need to know which model
-is behind it - swapping providers again later only means editing
-`worker.js` and pushing (which now deploys itself).
+## Deploy the web app
 
-The worker only allows requests from a small allowlist of origins (see
-`ALLOWED_ORIGINS` in `worker/worker.js`): the GitHub Pages PWA
-(`https://gefenrose.github.io`) and Capacitor's default native origins
-(`capacitor://localhost`, `https://localhost`, `http://localhost`). Add
-more if you deploy elsewhere.
+Enable GitHub Pages for the `main` branch, repository root, under **Settings → Pages**.
 
-## Deploy the app (PWA)
-
-Enable GitHub Pages for this repo (Settings -> Pages -> branch: main,
-folder: /). The app will be served at:
-
-https://gefenrose.github.io/serenity/
+URL: https://gefenrose.github.io/serenity/
 
 ## Capacitor (native app)
 
-This wraps the same app as an iOS/Android app via
-[Capacitor](https://capacitorjs.com).
-
 1. Install dependencies: `npm install`
-2. Add the platform(s) you need:
+2. Add platforms:
    - `npx cap add ios` (requires macOS + Xcode)
    - `npx cap add android` (requires Android Studio)
-3. Build the web assets and sync them into the native projects:
-   `npm run sync` (runs `build.js` to populate `www/`, then `cap sync`)
-4. Open and run:
+3. Sync: `npm run sync` (generates `www/` and runs `cap sync`)
+4. Open the project:
    - iOS: `npx cap open ios`
    - Android: `npx cap open android`
 
-After any change to `index.html`/`manifest.json`/`sw.js`/`icons/`, re-run
-`npm run sync` before building the native app again.
+After editing `index.html`, `manifest.json`, `sw.js`, or `icons/`, rerun `npm run sync` before building a native app.
 
-`capacitor.config.json` sets `appId: "com.gefenrose.serenity"` and
-`appName: "יומן רגוע"` - change `appId` before your first real build if
-you want a different bundle identifier (changing it later affects app
-store identity).
+### Storage is per origin
 
-### Heads up: storage is per-origin
+GitHub Pages (`https://gefenrose.github.io`) and native Capacitor origins
+(`capacitor://localhost` on iOS and `https://localhost` on Android) each
+have their own local storage. Profiles and journal entries are not shared
+automatically. Use the backup/import controls to move journal data; enter
+the personal Groq API key separately on each device.
 
-The native app runs from a different origin (`capacitor://localhost` on
-iOS, `https://localhost` on Android) than the PWA
-(`https://gefenrose.github.io`). `localStorage` - and therefore your
-journal entries and profile - is **not shared** between the PWA and the
-native app; they're separate installs with separate data. Use the
-"ייצוא גיבוי" / "ייבוא גיבוי" buttons on the home screen to move a backup
-between them.
+## Legacy Cloudflare deployment
 
+Older app versions used `serenity-api.gefenrose.workers.dev`. The new
+web app makes no requests to it. The old deployed Worker (if still present)
+can be disabled or deleted separately in the Cloudflare dashboard after all
+devices have updated; removing files from this repository does not delete
+the deployed Cloudflare service.
