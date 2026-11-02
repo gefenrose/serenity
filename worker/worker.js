@@ -1,5 +1,5 @@
 // Proxies chat requests from the serenity app (PWA + Capacitor native builds)
-// to OpenRouter (free tier, OpenAI-compatible), keeping the API key
+// to Groq (OpenAI-compatible API), keeping the API key
 // server-side. Deploy with wrangler (see README).
 //
 // The response is translated back into the same shape the frontend
@@ -14,14 +14,10 @@ const ALLOWED_ORIGINS = new Set([
   'http://localhost'                   // Capacitor Android (pre-v6 default scheme)
 ]);
 
-// Currently pointed back at Groq's llama-3.3-70b-versatile: the OpenRouter
-// free Gemini route was producing garbled, nonexistent-word output for
-// Hebrew - likely because that specific free model ID is no longer live
-// and requests were silently landing on the auto-selecting free router,
-// which can pick small models (1-2B params) with weak Hebrew. Revisit
-// OpenRouter once a specific, verified-live model ID is confirmed.
-const PRIMARY_MODEL = 'llama-3.3-70b-versatile';
-const FALLBACK_MODEL = 'llama-3.3-70b-versatile';
+// Groq retired llama-3.3-70b-versatile on free/developer tiers on 2026-08-16.
+// Use supported Groq-hosted models (these IDs do NOT require an OpenAI key).
+const PRIMARY_MODEL = 'openai/gpt-oss-120b';
+const FALLBACK_MODEL = 'openai/gpt-oss-20b';
 
 function corsHeaders(origin) {
   return {
@@ -73,8 +69,8 @@ export default {
 
     let upstream = await callOpenRouter(PRIMARY_MODEL, messages, env.GROQ_API_KEY);
 
-    // Harmless retry-once on transient errors; both constants point at the
-    // same model for now (see comment above PRIMARY_MODEL)
+    // Retry with the smaller, supported backup model if the primary model
+    // is rejected as invalid or unavailable.
     if (upstream.status === 400 || upstream.status === 404) {
       upstream = await callOpenRouter(FALLBACK_MODEL, messages, env.GROQ_API_KEY);
     }
